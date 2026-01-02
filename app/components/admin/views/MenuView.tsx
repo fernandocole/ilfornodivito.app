@@ -165,6 +165,9 @@ export const MenuView = ({
                 const dynamicStock = calcularStockDinamico(currentRecipe, ingredients);
                 const currentType = display.tipo || 'pizza';
 
+                // Usamos el stock calculado dinámicamente si tiene receta, sino el manual
+                const stockToShow = currentRecipe.length > 0 ? dynamicStock : (display.stock || 0);
+
                 return (
                 <div key={p.id} className={`p-4 rounded-3xl border flex flex-col relative overflow-hidden transition-all ${base.card} ${isEdited ? 'border-yellow-500/50' : ''}`}>
                     {/* --- HEADER (Siempre visible) --- */}
@@ -189,6 +192,11 @@ export const MenuView = ({
                                 onChange={(e: any) => updateP(p.id, 'nombre', e.target.value)} 
                                 className="bg-transparent font-bold text-lg outline-none w-full border-b border-transparent focus:border-white/20 pb-1 truncate" 
                             />
+
+                            {/* --- STOCK BADGE (NUEVO) --- */}
+                            <div className={`px-2 py-0.5 rounded-lg text-xs font-black flex-shrink-0 ${stockToShow > 0 ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                {stockToShow}
+                            </div>
                         </div>
 
                         <div className="flex gap-2 flex-shrink-0">

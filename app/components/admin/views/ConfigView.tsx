@@ -1,4 +1,4 @@
-import { Lock, Save, Trash2, Clock, Smartphone, RotateCcw, Users, KeyRound } from 'lucide-react';
+import { Lock, Save, Trash2, Clock, Smartphone, RotateCcw, Users, KeyRound, Star } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 // Inicializamos el cliente de Supabase aquí para este componente
@@ -56,7 +56,34 @@ export const ConfigView = ({
                 </button>
             </div>
 
-            {/* --- ACCESO INVITADOS (RESTITUIDO) --- */}
+            {/* --- AVISO DE CALIFICACIÓN --- */}
+            <div className={`p-5 rounded-3xl border ${base.card}`}>
+                <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Star size={20}/> Aviso de Calificación</h3>
+                <p className={`text-xs mb-3 ${base.subtext}`}>Tiempo que espera la app después de "Entregado" para pedir valoración.</p>
+                
+                <div className="flex items-center gap-3">
+                    <Clock size={20} className={base.subtext} />
+                    <input 
+                        type="number" 
+                        className={`w-20 p-3 rounded-xl border outline-none text-center font-bold ${base.input}`}
+                        value={config.tiempo_recordatorio_minutos || 10}
+                        onChange={(e) => setConfig({...config, tiempo_recordatorio_minutos: parseInt(e.target.value) || 0})}
+                    />
+                    <span className={`text-sm font-bold ${base.text}`}>minutos</span>
+                    
+                    <button 
+                        onClick={async () => {
+                            await supabase.from('configuracion_dia').update({ tiempo_recordatorio_minutos: config.tiempo_recordatorio_minutos }).eq('id', config.id);
+                            alert("Tiempo actualizado");
+                        }} 
+                        className={`ml-auto px-4 py-3 rounded-xl font-bold text-xs ${currentTheme.color} text-white shadow-lg`}
+                    >
+                        GUARDAR
+                    </button>
+                </div>
+            </div>
+
+            {/* --- ACCESO INVITADOS --- */}
             <div className={`p-5 rounded-3xl border ${base.card}`}>
                 <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Users size={20}/> Acceso Invitados</h3>
                 <p className={`text-xs mb-3 ${base.subtext}`}>Si dejas esto vacío, cualquiera podrá entrar sin clave.</p>
