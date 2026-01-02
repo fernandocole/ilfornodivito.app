@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   CheckSquare, Square, Plus, Image as ImageIcon, UploadCloud, X, Calculator, Save, 
-  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp, Copy 
+  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp, Copy, ArrowDownAZ, Calendar, Filter
 } from 'lucide-react';
 import { TimeControl } from '../../ui/TimeControl';
 import { BurgerIcon } from '../../ui/BurgerIcon'; 
@@ -20,17 +20,69 @@ export const MenuView = ({
 
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [showNewForm, setShowNewForm] = useState(false);
+    
+    // Estados locales para filtro y orden visual
+    const [typeFilter, setTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+    const [sortOrder, setSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
 
     const toggleExpand = (id: string) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    // Lógica de filtrado y ordenamiento local
+    const processedPizzas = useMemo(() => {
+        let list = [...pizzas];
+
+        // 1. Filtrar por tipo
+        if (typeFilter !== 'all') {
+            list = list.filter(p => (p.tipo || 'pizza') === typeFilter);
+        }
+
+        // 2. Ordenar
+        list.sort((a, b) => {
+            if (sortOrder === 'alpha') return a.nombre.localeCompare(b.nombre);
+            if (sortOrder === 'type') return (a.tipo || 'pizza').localeCompare(b.tipo || 'pizza');
+            // date (por defecto created_at viene de DB, asumimos que pizzas está ordenado por fecha o tiene el campo)
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+        });
+
+        return list;
+    }, [pizzas, typeFilter, sortOrder]);
+
+    const cycleSort = () => {
+        if (sortOrder === 'alpha') setSortOrder('type');
+        else if (sortOrder === 'type') setSortOrder('date');
+        else setSortOrder('alpha');
+    };
+
     return (
         <div className="space-y-6 pb-24">
             
-            {/* --- FILTROS DE CATEGORÍA --- */}
+            {/* --- CONTROLES DE VISTA (FILTROS Y ORDEN) --- */}
+            <div className={`${base.card} p-4 rounded-3xl border flex flex-col gap-3 shadow-sm`}>
+                <div className="flex justify-between items-center">
+                    <label className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${base.subtext}`}>VISTA DEL MENÚ</label>
+                    <button 
+                        onClick={cycleSort}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${base.buttonSec}`}
+                    >
+                        {sortOrder === 'alpha' && <><ArrowDownAZ size={14}/> A-Z</>}
+                        {sortOrder === 'type' && <><Filter size={14}/> TIPO</>}
+                        {sortOrder === 'date' && <><Calendar size={14}/> FECHA</>}
+                    </button>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <button onClick={() => setTypeFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${typeFilter === 'all' ? `${currentTheme.color} text-white border-transparent` : `${base.subtext} border-gray-500/20`}`}>Todos</button>
+                    <button onClick={() => setTypeFilter('pizza')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${typeFilter === 'pizza' ? `${currentTheme.color} text-white border-transparent` : `${base.subtext} border-gray-500/20`}`}>Pizzas</button>
+                    <button onClick={() => setTypeFilter('burger')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${typeFilter === 'burger' ? `${currentTheme.color} text-white border-transparent` : `${base.subtext} border-gray-500/20`}`}>Burgers</button>
+                    <button onClick={() => setTypeFilter('other')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${typeFilter === 'other' ? `${currentTheme.color} text-white border-transparent` : `${base.subtext} border-gray-500/20`}`}>Otros</button>
+                </div>
+            </div>
+
+            {/* --- FILTROS DE CATEGORÍA (VISIBILIDAD APP) --- */}
             <div className={`${base.card} p-5 rounded-3xl border flex flex-col gap-3 shadow-sm`}>
-                <label className={`text-xs font-bold uppercase tracking-wider opacity-60 ${base.subtext}`}>CATEGORIAS A MOSTRAR:</label>
+                <label className={`text-xs font-bold uppercase tracking-wider opacity-60 ${base.subtext}`}>CATEGORIAS A MOSTRAR EN APP:</label>
                 <div className="flex flex-wrap gap-2">
                       <button onClick={async () => {
                           const isAll = activeCategories.includes('Todas');
@@ -154,9 +206,9 @@ export const MenuView = ({
             </div>
             )}
             
-            {/* --- LISTA DE ITEMS --- */}
+            {/* --- LISTA DE ITEMS (USANDO LISTA PROCESADA) --- */}
             <div className="space-y-3">
-                {pizzas.map((p: any) => {
+                {processedPizzas.map((p: any) => {
                 const isEdited = !!edits[p.id];
                 const isOpen = expanded[p.id]; 
                 const display = { ...p, ...edits[p.id] }; 
@@ -186,14 +238,16 @@ export const MenuView = ({
                                 <Pizza size={20} className="text-red-500 flex-shrink-0" />
                             )}
                             
-                            {/* Input de nombre */}
-                            <input 
-                                value={display.nombre} 
-                                onChange={(e: any) => updateP(p.id, 'nombre', e.target.value)} 
-                                className="bg-transparent font-bold text-lg outline-none w-full border-b border-transparent focus:border-white/20 pb-1 truncate" 
-                            />
+                            {/* Input de nombre (MODIFICADO: text-base y scroll horizontal) */}
+                            <div className="flex-1 overflow-x-auto no-scrollbar">
+                                <input 
+                                    value={display.nombre} 
+                                    onChange={(e: any) => updateP(p.id, 'nombre', e.target.value)} 
+                                    className="bg-transparent font-bold text-base outline-none w-full min-w-[150px] border-b border-transparent focus:border-white/20 pb-1" 
+                                />
+                            </div>
 
-                            {/* --- STOCK BADGE (NUEVO) --- */}
+                            {/* --- STOCK BADGE --- */}
                             <div className={`px-2 py-0.5 rounded-lg text-xs font-black flex-shrink-0 ${stockToShow > 0 ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
                                 {stockToShow}
                             </div>
@@ -222,7 +276,6 @@ export const MenuView = ({
                                 <>
                                     <button onClick={() => updateP(p.id, 'activa', !p.activa)} className={`p-2 rounded-xl transition-colors ${p.activa ? 'bg-white/10 hover:bg-white/20' : 'bg-black/50 text-neutral-500'}`}>{p.activa ? <Eye size={16}/> : <EyeOff size={16}/>}</button>
                                     
-                                    {/* BOTÓN DUPLICAR (AQUÍ ESTÁ LA MAGIA) */}
                                     <button 
                                         onClick={() => duplicateP(p)} 
                                         className={`p-2 rounded-xl transition-colors bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white`}
