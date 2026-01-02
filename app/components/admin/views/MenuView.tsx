@@ -42,8 +42,8 @@ export const MenuView = ({
         list.sort((a, b) => {
             if (sortOrder === 'alpha') return a.nombre.localeCompare(b.nombre);
             if (sortOrder === 'type') return (a.tipo || 'pizza').localeCompare(b.tipo || 'pizza');
-            // date (por defecto created_at viene de DB, asumimos que pizzas está ordenado por fecha o tiene el campo)
-            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+            // date DESC (más reciente primero)
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); 
         });
 
         return list;
@@ -68,7 +68,7 @@ export const MenuView = ({
                     >
                         {sortOrder === 'alpha' && <><ArrowDownAZ size={14}/> A-Z</>}
                         {sortOrder === 'type' && <><Filter size={14}/> TIPO</>}
-                        {sortOrder === 'date' && <><Calendar size={14}/> FECHA</>}
+                        {sortOrder === 'date' && <><Calendar size={14}/> RECIENTES</>}
                     </button>
                 </div>
 
