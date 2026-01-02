@@ -37,7 +37,10 @@ export const FoodCard = ({
     const isUnit = isBurger || isOther; 
 
     // Lógica visual para el estado de cocción
-    const cookingLabel = isUnit ? 'Preparando' : t.inOven || 'En Horno';
+    // Ahora incluye la cantidad si hay pendientes > 0
+    const baseLabel = isUnit ? 'Preparando' : t.inOven || 'En Horno';
+    const cookingLabel = pendientes > 0 ? `${baseLabel} (${pendientes})` : baseLabel;
+    
     const cookingColor = isUnit ? 'bg-orange-500' : 'bg-red-600';
     const cookingIcon = isUnit ? <ChefHat size={10} fill="white"/> : <Flame size={10} fill="white"/>;
 
@@ -100,7 +103,7 @@ export const FoodCard = ({
                             )}
                         </div>
 
-                        {/* Estado Cocinando (MODIFICADO) */}
+                        {/* Estado Cocinando (MODIFICADO CON CANTIDAD) */}
                         {pizza.cocinando && (
                             <span className={`text-[10px] ${cookingColor} text-white px-2 py-0.5 rounded-full font-bold animate-pulse flex items-center gap-1`}>
                                 {cookingIcon} {cookingLabel}
