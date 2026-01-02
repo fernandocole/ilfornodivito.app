@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
-  CheckSquare, Square, Plus, ImageIcon, UploadCloud, X, Calculator, Save, 
-  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp 
+  CheckSquare, Square, Plus, Image as ImageIcon, UploadCloud, X, Calculator, Save, 
+  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp, Copy 
 } from 'lucide-react';
 import { TimeControl } from '../../ui/TimeControl';
 import { BurgerIcon } from '../../ui/BurgerIcon'; 
@@ -12,80 +12,78 @@ export const MenuView = ({
     newPizzaDesc, setNewPizzaDesc, newPizzaIngredients, removeFromNewPizzaRecipe, newPizzaSelectedIng,
     setNewPizzaSelectedIng, ingredients, newPizzaRecipeQty, setNewPizzaRecipeQty, addToNewPizzaRecipe,
     newPizzaCat, setNewPizzaCat, newPizzaPortions, setNewPizzaPortions, stockEstimadoNueva, newPizzaTime,
-    setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP,
+    setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP, duplicateP,
     tempRecipeIng, setTempRecipeIng, tempRecipeQty, setTempRecipeQty, addToExistingPizza, removeFromExistingPizza,
     reservedState, calcularStockDinamico, updateLocalRecipe, 
     newPizzaType, setNewPizzaType 
 }: any) => {
 
-    // Estado para controlar qué items están expandidos
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const [showNewForm, setShowNewForm] = useState(false);
 
     const toggleExpand = (id: string) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24">
+            
+            {/* --- FILTROS DE CATEGORÍA --- */}
             <div className={`${base.card} p-5 rounded-3xl border flex flex-col gap-3 shadow-sm`}>
                 <label className={`text-xs font-bold uppercase tracking-wider opacity-60 ${base.subtext}`}>CATEGORIAS A MOSTRAR:</label>
                 <div className="flex flex-wrap gap-2">
-                     <button onClick={async () => {
-                         const isAll = activeCategories.includes('Todas');
-                         const newVal = isAll ? ['General'] : ['Todas'];
-                         setConfig({...config, categoria_activa: JSON.stringify(newVal)});
-                     }} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${activeCategories.includes('Todas') ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-neutral-100 dark:bg-white/5 border-transparent text-gray-500'}`}>
-                         {activeCategories.includes('Todas') ? <CheckSquare size={14}/> : <Square size={14}/>} Todas
-                     </button>
-                     {uniqueCategories.map((cat: string) => {
-                         const isActive = activeCategories.includes(cat);
-                         return (
-                             <button key={cat} onClick={() => toggleCategory(cat)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${isActive ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-neutral-100 dark:bg-white/5 border-transparent text-gray-500'}`}>
-                                 {isActive ? <CheckSquare size={14}/> : <Square size={14}/>} {cat}
-                             </button>
-                         )
-                     })}
+                      <button onClick={async () => {
+                          const isAll = activeCategories.includes('Todas');
+                          const newVal = isAll ? ['General'] : ['Todas'];
+                          setConfig({...config, categoria_activa: JSON.stringify(newVal)});
+                      }} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${activeCategories.includes('Todas') ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-neutral-100 dark:bg-white/5 border-transparent text-gray-500'}`}>
+                          {activeCategories.includes('Todas') ? <CheckSquare size={14}/> : <Square size={14}/>} Todas
+                      </button>
+                      {uniqueCategories.map((cat: string) => {
+                          const isActive = activeCategories.includes(cat);
+                          return (
+                              <button key={cat} onClick={() => toggleCategory(cat)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${isActive ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-neutral-100 dark:bg-white/5 border-transparent text-gray-500'}`}>
+                                  {isActive ? <CheckSquare size={14}/> : <Square size={14}/>} {cat}
+                              </button>
+                          )
+                      })}
                 </div>
             </div>
 
-            <div className={`p-5 rounded-3xl border shadow-sm relative overflow-hidden group ${base.card}`}>
+            {/* --- BOTÓN NUEVO --- */}
+            <button 
+                onClick={() => setShowNewForm(!showNewForm)}
+                className={`w-full py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.color} text-white`}`}
+            >
+                {showNewForm ? <><X size={20}/> CANCELAR</> : <><Plus size={20}/> NUEVO PRODUCTO</>}
+            </button>
+
+            {/* --- FORMULARIO NUEVO --- */}
+            {showNewForm && (
+            <div className={`p-5 rounded-3xl border shadow-sm relative overflow-hidden group animate-in fade-in slide-in-from-top-4 ${base.card}`}>
                 <div className="flex justify-between items-start mb-4">
                     <h3 className={`font-bold flex items-center gap-2 text-xl ${base.subtext}`}><Plus size={24}/> Nuevo Item</h3>
                     
                     <div className="flex bg-neutral-100 dark:bg-black/30 rounded-xl p-1 border border-neutral-200 dark:border-white/10">
                         <button 
-                            onClick={() => { 
-                                setNewPizzaType('pizza'); 
-                                setNewPizzaPortions(4); 
-                                setNewPizzaCat('Pizzas'); 
-                            }}
+                            onClick={() => { setNewPizzaType('pizza'); setNewPizzaPortions(4); setNewPizzaCat('Pizzas'); }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${newPizzaType === 'pizza' ? 'bg-white dark:bg-neutral-800 shadow text-black dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             <Pizza size={14}/>
                         </button>
                         <button 
-                            onClick={() => { 
-                                setNewPizzaType('burger'); 
-                                setNewPizzaPortions(1); 
-                                setNewPizzaCat('Hamburguesas'); 
-                            }}
+                            onClick={() => { setNewPizzaType('burger'); setNewPizzaPortions(1); setNewPizzaCat('Hamburguesas'); }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${newPizzaType === 'burger' ? 'bg-white dark:bg-neutral-800 shadow text-black dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             <BurgerIcon className="w-4 h-4"/>
                         </button>
                         <button 
-                            onClick={() => { 
-                                setNewPizzaType('other'); 
-                                setNewPizzaPortions(1); 
-                                setNewPizzaCat(''); 
-                            }}
+                            onClick={() => { setNewPizzaType('other'); setNewPizzaPortions(1); setNewPizzaCat(''); }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${newPizzaType === 'other' ? 'bg-white dark:bg-neutral-800 shadow text-black dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             <Utensils size={14}/>
                         </button>
                     </div>
-
-                    <button onClick={addP} disabled={uploading} className={`${currentTheme.color} text-white font-bold px-6 py-2 rounded-xl shadow-lg active:scale-95 transition-all text-sm`}>CREAR</button>
                 </div>
                 
                 <div className="flex flex-col gap-4">
@@ -151,13 +149,16 @@ export const MenuView = ({
                             <TimeControl value={newPizzaTime} onChange={setNewPizzaTime} isDarkMode={isDarkMode}/>
                         </div>
                     </div>
+                    <button onClick={addP} disabled={uploading || !newPizzaName} className={`${currentTheme.color} w-full py-4 rounded-xl text-white font-bold shadow-lg mt-2`}>GUARDAR PLATO</button>
                 </div>
             </div>
+            )}
             
+            {/* --- LISTA DE ITEMS --- */}
             <div className="space-y-3">
                 {pizzas.map((p: any) => {
                 const isEdited = !!edits[p.id];
-                const isOpen = expanded[p.id]; // Verificamos si está expandido
+                const isOpen = expanded[p.id]; 
                 const display = { ...p, ...edits[p.id] }; 
                 const isNewRecipe = !!edits[p.id]?.local_recipe;
                 const currentRecipe = isNewRecipe ? edits[p.id].local_recipe : recetas.filter((r: any) => r.pizza_id === p.id).map((r: any) => ({...r, nombre: ingredients.find((i: any) => i.id === r.ingrediente_id)?.nombre || '?'}));
@@ -168,9 +169,9 @@ export const MenuView = ({
                 <div key={p.id} className={`p-4 rounded-3xl border flex flex-col relative overflow-hidden transition-all ${base.card} ${isEdited ? 'border-yellow-500/50' : ''}`}>
                     {/* --- HEADER (Siempre visible) --- */}
                     <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 flex-1 mr-2">
+                        <div className="flex items-center gap-2 flex-1 mr-2 min-w-0">
                             {/* Botón de expandir/contraer */}
-                            <button onClick={() => toggleExpand(p.id)} className={`p-1.5 rounded-lg ${base.buttonSec}`}>
+                            <button onClick={() => toggleExpand(p.id)} className={`p-1.5 rounded-lg flex-shrink-0 ${base.buttonSec}`}>
                                 {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </button>
 
@@ -192,7 +193,7 @@ export const MenuView = ({
 
                         <div className="flex gap-2 flex-shrink-0">
                             {/* BOTONES GUARDAR/CANCELAR MEJORADOS */}
-                            {isEdited && (
+                            {isEdited ? (
                                 <>
                                     <button 
                                         onClick={() => savePizzaChanges(p.id)} 
@@ -209,21 +210,28 @@ export const MenuView = ({
                                         <X size={16}/>
                                     </button>
                                 </>
-                            )}
-                            
-                            {/* Botones de acción normales */}
-                            {!isEdited && (
-                                <button onClick={() => updateP(p.id, 'activa', !p.activa)} className={`p-2 rounded-xl transition-colors ${p.activa ? 'bg-white/10 hover:bg-white/20' : 'bg-black/50 text-neutral-500'}`}>{p.activa ? <Eye size={16}/> : <EyeOff size={16}/>}</button>
-                            )}
-                            {!isEdited && (
-                                <button onClick={() => delP(p.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                            ) : (
+                                <>
+                                    <button onClick={() => updateP(p.id, 'activa', !p.activa)} className={`p-2 rounded-xl transition-colors ${p.activa ? 'bg-white/10 hover:bg-white/20' : 'bg-black/50 text-neutral-500'}`}>{p.activa ? <Eye size={16}/> : <EyeOff size={16}/>}</button>
+                                    
+                                    {/* BOTÓN DUPLICAR (AQUÍ ESTÁ LA MAGIA) */}
+                                    <button 
+                                        onClick={() => duplicateP(p)} 
+                                        className={`p-2 rounded-xl transition-colors bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white`}
+                                        title="Duplicar"
+                                    >
+                                        <Copy size={16}/>
+                                    </button>
+
+                                    <button onClick={() => delP(p.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                                </>
                             )}
                         </div>
                     </div>
 
                     {/* --- CONTENIDO EXPANDIBLE --- */}
                     {isOpen && (
-                        <div className="flex flex-col gap-4 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-col gap-4 mt-4 animate-in fade-in slide-in-from-top-2 duration-200 border-t border-dashed border-gray-500/20 pt-4">
                             <div className="flex gap-4">
                                 <label className="cursor-pointer relative w-20 h-20 rounded-xl overflow-hidden bg-neutral-900 group flex-shrink-0 shadow-inner">
                                     {display.imagen_url ? <img src={display.imagen_url} className="w-full h-full object-cover"/> : <div className="flex items-center justify-center h-full text-neutral-600"><ImageIcon size={20}/></div>}
