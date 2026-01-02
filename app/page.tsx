@@ -39,12 +39,26 @@ const landingTexts: Record<string, { sub: string, btn: string, admin: string }> 
     it: { sub: "Spero che ti diverta oggi!", btn: "Ospiti d'Onore", admin: "Accesso Admin" }
 };
 
-const getCookingText = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
+// HELPER: Texto y Estilo de Cocción
+const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
     const isPizza = tipo === 'pizza';
-    if (context === 'ing') return isPizza ? 'al horno' : 'en preparación';
-    if (context === 'ed') return isPizza ? 'horneada' : 'lista';
-    if (context === 'short') return isPizza ? 'Horno' : 'Cocina';
-    return isPizza ? 'cocinando' : 'preparando';
+    
+    // Textos
+    let text = '';
+    if (context === 'ing') text = isPizza ? 'al horno' : 'en preparación';
+    else if (context === 'ed') text = isPizza ? 'horneada' : 'lista';
+    else if (context === 'short') text = isPizza ? 'Horno' : 'Cocina';
+    else text = isPizza ? 'cocinando' : 'preparando';
+
+    // Colores (Solo para badges visuales, no afecta texto puro)
+    const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; // Naranja más suave para no pizza o igual
+
+    return { text, colorClass };
+};
+
+// Mantengo esta por compatibilidad si se usa solo texto
+const getCookingText = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
+    return getCookingInfo(tipo, context).text;
 };
 
 export default function VitoPizzaApp() {
@@ -69,7 +83,10 @@ export default function VitoPizzaApp() {
   
   const [mensaje, setMensaje] = useState<MensajeTipo | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
-  const [orden, setOrden] = useState<'estado' | 'nombre' | 'ranking'>('estado');
+  
+  // MODIFICADO: Orden por defecto 'nombre' (alfabético)
+  const [orden, setOrden] = useState<'estado' | 'nombre' | 'ranking'>('nombre');
+  
   const [filter, setFilter] = useState<'all' | 'top' | 'to_rate' | 'ordered' | 'new' | 'stock'>('all');
   
   const [isCompact, setIsCompact] = useState(false);
@@ -244,7 +261,10 @@ export default function VitoPizzaApp() {
     const savedMode = localStorage.getItem('vito-dark-mode'); if (savedMode !== null) setIsDarkMode(savedMode === 'true'); else setIsDarkMode(false);
     const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType);
     const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true);
-    const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any);
+    
+    // MODIFICADO: Si no hay orden guardado, usa 'nombre' por defecto
+    const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre');
+    
     const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true');
     const savedFilter = localStorage.getItem('vito-filter'); if (savedFilter) setFilter(savedFilter as any);
     const savedPass = localStorage.getItem('vito-guest-pass-val'); if(savedPass) setGuestPassInput(savedPass);
