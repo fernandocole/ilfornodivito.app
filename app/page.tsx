@@ -39,20 +39,14 @@ const landingTexts: Record<string, { sub: string, btn: string, admin: string }> 
     it: { sub: "Spero che ti diverta oggi!", btn: "Ospiti d'Onore", admin: "Accesso Admin" }
 };
 
-// HELPER: Texto y Estilo de Cocción
 const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
     const isPizza = tipo === 'pizza';
-    
-    // Textos
     let text = '';
     if (context === 'ing') text = isPizza ? 'al horno' : 'en preparación';
     else if (context === 'ed') text = isPizza ? 'horneada' : 'lista';
     else if (context === 'short') text = isPizza ? 'Horno' : 'Cocina';
     else text = isPizza ? 'cocinando' : 'preparando';
-
-    // Colores
     const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; 
-
     return { text, colorClass };
 };
 
@@ -138,7 +132,6 @@ export default function VitoPizzaApp() {
   });
 
   const [invitadosActivos, setInvitadosActivos] = useState(0);
-  // MODIFICADO: Estructura clara para diferenciar estados
   const [miHistorial, setMiHistorial] = useState<Record<string, { pendientes: number, comidos: number, enHorno: number, enEspera: number }>>({});
   const [invitadosLista, setInvitadosLista] = useState<any[]>([]);
   const [usuarioBloqueado, setUsuarioBloqueado] = useState(false);
@@ -371,7 +364,6 @@ export default function VitoPizzaApp() {
              const m = mis.filter(p => p.pizza_id === pz.id); 
              const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); 
              
-             // LÓGICA MODIFICADA: Separamos En Horno y En Espera
              const enHornoCount = m.filter(p => p.estado === 'cocinando').reduce((acc, x) => acc + x.cantidad_porciones, 0);
              const enEsperaCount = m.filter(p => p.estado === 'pendiente').reduce((acc, x) => acc + x.cantidad_porciones, 0);
              const pTotal = enHornoCount + enEsperaCount;
@@ -410,7 +402,42 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
-  const enrichedPizzas = useMemo(() => { const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; return pizzas.map(pizza => { const target = pizza.porciones_individuales || config.porciones_por_pizza; const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); const totalPotentialStock = (pizza.stock || 0) * target; const stockRestante = Math.max(0, totalPotentialStock - pen); const rats = allRatings.filter(r => r.pizza_id === pizza.id); const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; const sortR = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length) : globalAvg; const countRating = rats.length; let displayName = pizza.nombre; let displayDesc = pizza.descripcion; if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } return { ...pizza, displayName, displayDesc, stockRestante, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: countRating, sortRating: sortR, totalPendientes: pen }; }); }, [pizzas, pedidos, config, allRatings, lang, autoTranslations]);
+  // ---------------------------------------------------------------------------
+  // [MODIFICACIÓN CLAVE] Cálculo de StockRestante corregido
+  // ---------------------------------------------------------------------------
+  const enrichedPizzas = useMemo(() => { 
+      const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
+      
+      return pizzas.map(pizza => { 
+          const target = pizza.porciones_individuales || config.porciones_por_pizza; 
+          
+          // 'pen' es el TOTAL de porciones pendientes/cocinando de TODOS los usuarios.
+          // El Admin ya redujo 'pizza.stock' (pizzas enteras) considerando estas reservas.
+          const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
+          
+          // Cálculo corregido del stock:
+          // Stock real = (Pizzas enteras DB * porciones) + (Resto de la pizza abierta actual)
+          // Si pen % target es 0, no hay pizza abierta. Si es > 0, hay una pizza abierta con (target - resto) porciones libres.
+          const wholePizzaStock = (pizza.stock || 0) * target;
+          const openPizzaStock = (pen % target === 0) ? 0 : (target - (pen % target));
+          
+          const stockRestante = wholePizzaStock + openPizzaStock;
+
+          const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
+          const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
+          const sortR = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length) : globalAvg; 
+          const countRating = rats.length; 
+          
+          let displayName = pizza.nombre; 
+          let displayDesc = pizza.descripcion; 
+          if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { 
+              displayName = autoTranslations[pizza.id][lang].name; 
+              displayDesc = autoTranslations[pizza.id][lang].desc; 
+          } 
+          
+          return { ...pizza, displayName, displayDesc, stockRestante, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: countRating, sortRating: sortR, totalPendientes: pen }; 
+      }); 
+  }, [pizzas, pedidos, config, allRatings, lang, autoTranslations]);
 
   const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.enEspera > 0; if(summarySheet === 'oven') return h.enHorno > 0; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.enEspera; else if(summarySheet === 'oven') count = h.enHorno; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
   
