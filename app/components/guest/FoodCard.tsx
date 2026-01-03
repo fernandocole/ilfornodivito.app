@@ -1,6 +1,6 @@
 import { 
   Maximize2, Star, Minus, Plus, Pizza, Utensils, 
-  ChefHat, MessageSquare, Flame 
+  ChefHat, MessageSquare, Flame, Clock 
 } from 'lucide-react';
 
 // Componente local para el icono de Hamburguesa
@@ -29,9 +29,10 @@ export const FoodCard = ({
 }: any) => {
     
     const hist = miHistorial[pizza.id];
-    // AHORA USAMOS LAS VARIABLES SEPARADAS QUE CALCULAMOS EN PAGE.TSX
-    const pendientes = hist?.pendientes || 0; // Total (para los badges de "pediste X")
-    const enHornoCount = hist?.enHorno || 0;  // Solo los que están cocinándose (para el badge de estado)
+    // Desglose de estados
+    const pendientes = hist?.pendientes || 0; // Total (suma de espera + horno)
+    const enHornoCount = hist?.enHorno || 0;  
+    const enEsperaCount = hist?.enEspera || 0;
     const comidos = hist?.comidos || 0;
     
     const isBurger = (pizza.tipo === 'burger');
@@ -40,7 +41,6 @@ export const FoodCard = ({
 
     // Lógica visual para el estado de cocción
     const baseLabel = isUnit ? 'Preparando' : t.inOven || 'En Horno';
-    // Usamos enHornoCount en lugar de pendientes totales
     const cookingLabel = enHornoCount > 0 ? `${baseLabel} (${enHornoCount})` : baseLabel;
     
     const cookingColor = isUnit ? 'bg-orange-500' : 'bg-red-600';
@@ -105,9 +105,16 @@ export const FoodCard = ({
                             )}
                         </div>
 
-                        {/* Estado Cocinando (AHORA SOLO SE MUESTRA SI HAY ALGO EN EL HORNO) */}
+                        {/* --- BADGE: EN ESPERA (NUEVO) --- */}
+                        {enEsperaCount > 0 && (
+                            <span className={`text-[10px] bg-neutral-500 text-white px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-white/10`}>
+                                <Clock size={10} className="text-white" /> En Espera ({enEsperaCount})
+                            </span>
+                        )}
+
+                        {/* --- BADGE: EN HORNO/PREPARANDO --- */}
                         {pizza.cocinando && enHornoCount > 0 && (
-                            <span className={`text-[10px] ${cookingColor} text-white px-2 py-0.5 rounded-full font-bold animate-pulse flex items-center gap-1`}>
+                            <span className={`text-[10px] ${cookingColor} text-white px-2 py-0.5 rounded-full font-bold animate-pulse flex items-center gap-1 shadow-sm`}>
                                 {cookingIcon} {cookingLabel}
                             </span>
                         )}
@@ -130,8 +137,11 @@ export const FoodCard = ({
                     </p>
                 </div>
                 
-                {/* Badges de Usuario (Pedidos/Comidos) */}
+                {/* Badges de Usuario (Pedidos Totales / Comidos) */}
                 <div className="flex flex-col items-end gap-1 ml-2">
+                    {/* Nota: 'pendientes' es la suma de Espera + Horno. 
+                        Podemos dejarlo como "Pediste X" (Total) o quitarlo si los badges de arriba son suficientes.
+                        Lo mantengo para que el usuario sepa el total de su orden activa. */}
                     {pendientes > 0 && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${isDarkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-neutral-800 border-neutral-800 text-white'}`}>
                             {t.youOrdered} {pendientes}
