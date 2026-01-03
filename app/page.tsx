@@ -39,6 +39,7 @@ const landingTexts: Record<string, { sub: string, btn: string, admin: string }> 
     it: { sub: "Spero che ti diverta oggi!", btn: "Ospiti d'Onore", admin: "Accesso Admin" }
 };
 
+// HELPER: Texto y Estilo de Cocción
 const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
     const isPizza = tipo === 'pizza';
     let text = '';
@@ -46,6 +47,7 @@ const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') =
     else if (context === 'ed') text = isPizza ? 'horneada' : 'lista';
     else if (context === 'short') text = isPizza ? 'Horno' : 'Cocina';
     else text = isPizza ? 'cocinando' : 'preparando';
+
     const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; 
     return { text, colorClass };
 };
@@ -402,26 +404,26 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
-  // ---------------------------------------------------------------------------
-  // [MODIFICACIÓN CLAVE] Cálculo de StockRestante corregido
-  // ---------------------------------------------------------------------------
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
       return pizzas.map(pizza => { 
           const target = pizza.porciones_individuales || config.porciones_por_pizza; 
           
-          // 'pen' es el TOTAL de porciones pendientes/cocinando de TODOS los usuarios.
-          // El Admin ya redujo 'pizza.stock' (pizzas enteras) considerando estas reservas.
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // Cálculo corregido del stock:
-          // Stock real = (Pizzas enteras DB * porciones) + (Resto de la pizza abierta actual)
-          // Si pen % target es 0, no hay pizza abierta. Si es > 0, hay una pizza abierta con (target - resto) porciones libres.
+          // CÁLCULO DE STOCK CORREGIDO
           const wholePizzaStock = (pizza.stock || 0) * target;
-          const openPizzaStock = (pen % target === 0) ? 0 : (target - (pen % target));
+          const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
           
-          const stockRestante = wholePizzaStock + openPizzaStock;
+          let stockRestante = wholePizzaStock + remainder;
+
+          // Parche de latencia: Cuando se pide la 1ra porción de una pizza nueva (resto = target - 1),
+          // a veces la DB aún reporta el stock de pizzas enteras anterior (alto), generando un salto visual (ej: 44 -> 47).
+          // Si detectamos que se acaba de abrir una pizza (pen % target === 1), restamos esa pizza "fantasma" del total.
+          if (pen % target === 1) {
+             stockRestante = Math.max(0, stockRestante - target);
+          }
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
