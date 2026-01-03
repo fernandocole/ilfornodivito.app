@@ -39,7 +39,6 @@ const landingTexts: Record<string, { sub: string, btn: string, admin: string }> 
     it: { sub: "Spero che ti diverta oggi!", btn: "Ospiti d'Onore", admin: "Accesso Admin" }
 };
 
-// HELPER: Texto y Estilo de Cocción
 const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
     const isPizza = tipo === 'pizza';
     let text = '';
@@ -47,7 +46,6 @@ const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') =
     else if (context === 'ed') text = isPizza ? 'horneada' : 'lista';
     else if (context === 'short') text = isPizza ? 'Horno' : 'Cocina';
     else text = isPizza ? 'cocinando' : 'preparando';
-
     const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; 
     return { text, colorClass };
 };
@@ -404,7 +402,7 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
-  // --- CÁLCULO DE STOCK CORREGIDO ---
+  // --- CÁLCULO DE STOCK CORREGIDO (LÓGICA FINAL) ---
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
@@ -413,14 +411,16 @@ export default function VitoPizzaApp() {
           
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // Lógica estabilizada para stock
-          // Reconstruye el "total disponible real" basándose en el stock DB (que es un piso) y los pedidos activos.
-          const dbStockWholePizzas = pizza.stock || 0;
-          const impliedTotalWholePizzas = dbStockWholePizzas + Math.ceil(pen / target);
-          const totalPotentialSlices = impliedTotalWholePizzas * target;
+          // Lógica estabilizada: 
+          // Si DB dice 10 pizzas, y tengo 1 porción pedida (pen % target == 1):
+          // Significa que la DB ya bajó a 9.
+          // Stock real = (9 * 4) + (4 - 1) = 36 + 3 = 39. Correcto.
+          // Formula general: (DB_Stock * target) + (target - (pen % target))
+          // Si pen % target es 0, no sumamos nada extra, es DB_Stock * target.
           
-          // Calcula el stock restante restando lo que ya está pedido
-          const stockRestante = Math.max(0, totalPotentialSlices - pen);
+          const wholePizzaStock = (pizza.stock || 0) * target;
+          const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
+          const stockRestante = wholePizzaStock + remainder;
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
