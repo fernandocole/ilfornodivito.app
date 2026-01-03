@@ -1,10 +1,11 @@
-import { Bell, BellOff, Users, Type, ArrowUpNarrowWide, ArrowDownAZ, TrendingUp, Minimize2, Maximize2, Sun, Moon, Palette, Download, Lock } from 'lucide-react';
+import { Bell, BellOff, Users, Type, ArrowUpNarrowWide, ArrowDownAZ, TrendingUp, Minimize2, Maximize2, Sun, Moon, Palette, Download, Lock, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
 export const TopBar = ({ 
     base, notifEnabled, toggleNotificaciones, rotarIdioma, lang, onlineUsers, config, 
     isDarkMode, getBtnClass, cycleTextSize, orden, toggleOrden, isCompact, toggleCompact, 
-    toggleDarkMode, showThemeSelector, setShowThemeSelector, THEMES, changeTheme, isInstallable, handleInstallClick 
+    toggleDarkMode, showThemeSelector, setShowThemeSelector, THEMES, changeTheme, isInstallable, handleInstallClick,
+    onLogout // Nueva prop para cerrar sesión
 }: any) => {
     return (
       <div className="fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none">
@@ -49,6 +50,12 @@ export const TopBar = ({
                     <Download size={20} />
                 </button>
               )}
+              
+              {/* BOTÓN CERRAR SESIÓN */}
+              <button onClick={onLogout} className={`${base.bar} p-2 rounded-full border shadow-lg text-red-500 hover:bg-red-500/10`}>
+                  <LogOut size={20} />
+              </button>
+
               <Link href="/admin" className={`${base.bar} p-2 rounded-full border shadow-lg`}>
                   <Lock size={20} />
               </Link>

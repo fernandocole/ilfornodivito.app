@@ -242,6 +242,16 @@ export default function VitoPizzaApp() {
     }
   };
 
+  // --- FUNCIÓN DE LOGOUT (NUEVA) ---
+  const logoutGuest = () => {
+    if(confirm("¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
+        localStorage.removeItem('vito-guest-name');
+        localStorage.removeItem('vito-guest-pass-val');
+        setNombreInvitado('');
+        setFlowStep('landing');
+    }
+  };
+
   // --- EFECTOS DE CARGA ---
   useEffect(() => {
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(error => console.log('SW error:', error)); }
@@ -411,16 +421,10 @@ export default function VitoPizzaApp() {
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
           // Lógica de visualización "HÍBRIDA": "X pizzas + Y porciones"
-          // Separamos stock en enteros y remanente para mostrarlo claramente en la UI si se requiere, 
-          // O usamos esta lógica para tener una cantidad total "honesta".
-          
-          // Calculamos remanente (porciones sueltas de la pizza abierta actual)
           const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
-          
-          // Stock que viene de la DB (Pizzas enteras)
           const dbStockWhole = pizza.stock || 0;
           
-          // Stock Total en porciones = (Enteras * Porciones) + (Sueltas de la abierta)
+          // Stock Total en porciones (Para la UI de "Disponible: X + Y")
           const stockRestante = (dbStockWhole * target) + remainder;
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
@@ -439,9 +443,9 @@ export default function VitoPizzaApp() {
               ...pizza, 
               displayName, 
               displayDesc, 
-              stockRestante, // Stock Total en porciones (Unificado)
-              dbStockWhole, // Stock Entero (Para visualización alternativa)
-              remainder,    // Porciones sueltas (Para visualización alternativa)
+              stockRestante, // Usado para control de botones (si > 0 se puede pedir)
+              dbStockWhole, 
+              remainder, 
               target, 
               ocupadasActual: pen % target, 
               faltanParaCompletar: target - (pen % target), 
@@ -603,6 +607,7 @@ export default function VitoPizzaApp() {
         orden={orden} toggleOrden={toggleOrden} isCompact={isCompact} toggleCompact={toggleCompact} 
         toggleDarkMode={toggleDarkMode} showThemeSelector={showThemeSelector} setShowThemeSelector={setShowThemeSelector} 
         THEMES={THEMES} changeTheme={changeTheme} isInstallable={isInstallable} handleInstallClick={handleInstallClick}
+        onLogout={logoutGuest}
       />
 
       <div className={`w-full p-6 pb-6 rounded-b-[40px] bg-gradient-to-br ${currentTheme.gradient} shadow-2xl relative overflow-hidden`}>
