@@ -445,9 +445,9 @@ export default function AdminPage() {
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
       <div className={`w-full h-40 rounded-b-[40px] bg-gradient-to-br ${currentTheme.gradient} shadow-xl absolute top-0 left-0 z-0`}></div>
-      <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl p-2 flex justify-between items-start shadow-lg backdrop-blur-md border ${base.bar}`}>
+      <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div 
-             className="flex items-center gap-3 pl-2 cursor-pointer active:scale-95 transition-transform"
+             className={`p-2 rounded-2xl shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer transition-transform active:scale-95 ${base.bar}`}
              onClick={() => setShowOnlineModal(true)}
           >
               <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
@@ -475,7 +475,7 @@ export default function AdminPage() {
                   {view === 'cocina' && (<><button onClick={() => setOrden(o => o === 'estado' ? 'nombre' : 'estado')} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}</button><button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}</button></>)}
               </div>
 
-              {/* FILA 2: SESIÓN (A la derecha, debajo de herramientas) */}
+              {/* FILA 2: SESIÓN (Debajo de herramientas) */}
               <div className="flex items-center gap-2 pointer-events-auto relative z-40">
                   {/* Logout */}
                   <button 
