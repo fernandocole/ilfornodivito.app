@@ -50,13 +50,12 @@ const getCookingInfo = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') =
     else if (context === 'short') text = isPizza ? 'Horno' : 'Cocina';
     else text = isPizza ? 'cocinando' : 'preparando';
 
-    // Colores (Solo para badges visuales, no afecta texto puro)
-    const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; // Naranja más suave para no pizza o igual
+    // Colores
+    const colorClass = isPizza ? 'bg-orange-500' : 'bg-orange-400'; 
 
     return { text, colorClass };
 };
 
-// Mantengo esta por compatibilidad si se usa solo texto
 const getCookingText = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') => {
     return getCookingInfo(tipo, context).text;
 };
@@ -84,7 +83,6 @@ export default function VitoPizzaApp() {
   const [mensaje, setMensaje] = useState<MensajeTipo | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
   
-  // MODIFICADO: Orden por defecto 'nombre' (alfabético)
   const [orden, setOrden] = useState<'estado' | 'nombre' | 'ranking'>('nombre');
   
   const [filter, setFilter] = useState<'all' | 'top' | 'to_rate' | 'ordered' | 'new' | 'stock'>('all');
@@ -140,7 +138,8 @@ export default function VitoPizzaApp() {
   });
 
   const [invitadosActivos, setInvitadosActivos] = useState(0);
-  const [miHistorial, setMiHistorial] = useState<Record<string, { pendientes: number, comidos: number }>>({});
+  // MODIFICADO: Estructura clara para diferenciar estados
+  const [miHistorial, setMiHistorial] = useState<Record<string, { pendientes: number, comidos: number, enHorno: number, enEspera: number }>>({});
   const [invitadosLista, setInvitadosLista] = useState<any[]>([]);
   const [usuarioBloqueado, setUsuarioBloqueado] = useState(false);
   const [motivoBloqueo, setMotivoBloqueo] = useState('');
@@ -150,8 +149,7 @@ export default function VitoPizzaApp() {
   const prevCocinandoData = useRef<Record<string, boolean>>({});
   const firstLoadRef = useRef(true);
 
-  // --- HELPERS (DEFINIDOS AQUÍ PARA EVITAR ERRORES DE HOISTING) ---
-  
+  // --- HELPERS ---
   const mostrarMensaje = (txt: string, tipo: 'info' | 'alerta' | 'exito') => { 
       setMensaje({ texto: txt, tipo }); 
       if (tipo !== 'alerta') { setTimeout(() => setMensaje(null), 2500); } 
@@ -262,7 +260,6 @@ export default function VitoPizzaApp() {
     const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType);
     const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true);
     
-    // MODIFICADO: Si no hay orden guardado, usa 'nombre' por defecto
     const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre');
     
     const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true');
@@ -369,14 +366,25 @@ export default function VitoPizzaApp() {
         const mV = dVal?.filter(v => v.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (mV) setMisValoraciones(mV.map(v => v.pizza_id));
         const mis = dPed.filter(p => p.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim());
         const res: any = {}; const penInfo: Record<string, number> = {}; 
+        
         dPiz.forEach(pz => {
-             const m = mis.filter(p => p.pizza_id === pz.id); const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); const p = m.filter(p => p.estado !== 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); res[pz.id] = { pendientes: p, comidos: c };
-             if (p > 0) penInfo[pz.id] = p;
+             const m = mis.filter(p => p.pizza_id === pz.id); 
+             const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); 
+             
+             // LÓGICA MODIFICADA: Separamos En Horno y En Espera
+             const enHornoCount = m.filter(p => p.estado === 'cocinando').reduce((acc, x) => acc + x.cantidad_porciones, 0);
+             const enEsperaCount = m.filter(p => p.estado === 'pendiente').reduce((acc, x) => acc + x.cantidad_porciones, 0);
+             const pTotal = enHornoCount + enEsperaCount;
+
+             res[pz.id] = { pendientes: pTotal, comidos: c, enHorno: enHornoCount, enEspera: enEsperaCount };
+             
+             if (pTotal > 0) penInfo[pz.id] = pTotal;
+             
              if (!firstLoadRef.current && flowStep === 'app') { 
-                 if (!(prevCocinandoData.current[pz.id]) && pz.cocinando && p) { sendNotification(pz.tipo === 'pizza' ? "¡Al Horno!" : "¡En Marcha!", `Tu ${pz.nombre} está ${getCookingText(pz.tipo, 'ing')}.`); }
+                 if (!(prevCocinandoData.current[pz.id]) && pz.cocinando && pTotal) { sendNotification(pz.tipo === 'pizza' ? "¡Al Horno!" : "¡En Marcha!", `Tu ${pz.nombre} está ${getCookingText(pz.tipo, 'ing')}.`); }
                  if (prevCocinandoData.current[pz.id] && !pz.cocinando && (prevPendingPerPizzaRef.current[pz.id] > 0)) { mostrarMensaje(`¡Tu ${pz.nombre} ESTÁ LISTA!`, 'exito'); sendNotification(`¡${pz.nombre} Lista!`, `¡Ya está ${getCookingText(pz.tipo, 'ed')}!`, `/?rate=${pz.id}`); }
              } 
-             prevCocinandoData.current[pz.id] = pz.cocinando; prevComidosPerPizza.current[pz.id] = c; prevPendingPerPizzaRef.current[pz.id] = p;
+             prevCocinandoData.current[pz.id] = pz.cocinando; prevComidosPerPizza.current[pz.id] = c; prevPendingPerPizzaRef.current[pz.id] = pTotal;
         });
         setMiHistorial(res); if (firstLoadRef.current) firstLoadRef.current = false;
       }
@@ -404,8 +412,15 @@ export default function VitoPizzaApp() {
 
   const enrichedPizzas = useMemo(() => { const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; return pizzas.map(pizza => { const target = pizza.porciones_individuales || config.porciones_por_pizza; const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); const totalPotentialStock = (pizza.stock || 0) * target; const stockRestante = Math.max(0, totalPotentialStock - pen); const rats = allRatings.filter(r => r.pizza_id === pizza.id); const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; const sortR = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length) : globalAvg; const countRating = rats.length; let displayName = pizza.nombre; let displayDesc = pizza.descripcion; if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } return { ...pizza, displayName, displayDesc, stockRestante, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: countRating, sortRating: sortR, totalPendientes: pen }; }); }, [pizzas, pedidos, config, allRatings, lang, autoTranslations]);
 
-  const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.pendientes > 0 && !p.cocinando; if(summarySheet === 'oven') return h.pendientes > 0 && p.cocinando; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.pendientes; else if(summarySheet === 'oven') count = h.pendientes; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
-  const mySummary = useMemo(() => { let t = 0, w = 0, o = 0, r = 0; pizzas.forEach(p => { const h = miHistorial[p.id]; if(h) { const pen = h.pendientes; if (pen > 0) { if (p.cocinando) o += pen; else w += pen; } r += h.comidos; t += pen; } }); return { total: t, wait: w, oven: o, ready: r }; }, [miHistorial, pizzas]);
+  const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.enEspera > 0; if(summarySheet === 'oven') return h.enHorno > 0; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.enEspera; else if(summarySheet === 'oven') count = h.enHorno; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
+  
+  const mySummary = useMemo(() => { let t = 0, w = 0, o = 0, r = 0; pizzas.forEach(p => { const h = miHistorial[p.id]; if(h) { 
+      w += h.enEspera;
+      o += h.enHorno;
+      r += h.comidos; 
+      t += h.pendientes; 
+  } }); return { total: t, wait: w, oven: o, ready: r }; }, [miHistorial, pizzas]);
+  
   const currentBannerText = useMemo(() => { if (cargando) return t.loading; const msgs = [`${invitadosActivos} ${t.status}`]; const pData = pizzas.map(p => { const vals = allRatings.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? vals.reduce((a, b) => a + b.rating, 0) / vals.length : 0; const totS = (p.stock || 0) * (p.porciones_individuales || config.porciones_por_pizza); const us = pedidos.filter(ped => ped.pizza_id === p.id).reduce((a, c) => a + c.cantidad_porciones, 0); let dName = p.nombre; if (lang !== 'es' && autoTranslations[p.id] && autoTranslations[p.id][lang]) { dName = autoTranslations[p.id][lang].name; } return { ...p, displayName: dName, stock: Math.max(0, totS - us), avg, count: vals.length }; }); pData.forEach(p => { if (p.stock === 0) msgs.push(`${p.displayName}: ${t.soldOut} 😭`); else if (p.stock <= 5) msgs.push(`${t.only} ${p.stock} ${t.of} ${p.displayName}! 🏃`); }); const best = [...pData].sort((a,b) => b.avg - a.avg)[0]; if (best && best.avg >= 4.5 && best.count > 1) msgs.push(`${t.topRated} ${best.displayName} (${best.avg.toFixed(1)}★)`); const pop = pData.filter(p => p.avg > 4.7 && p.count > 2); pop.forEach(p => msgs.push(`${t.hotPick} ${p.displayName}!`)); return msgs[bannerIndex % msgs.length]; }, [invitadosActivos, pizzas, pedidos, bannerIndex, cargando, t, config, allRatings, lang, autoTranslations]);
 
   // --- EFECTOS USANDO VARIABLES YA DECLARADAS ---
