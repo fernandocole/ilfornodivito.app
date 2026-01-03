@@ -445,7 +445,7 @@ export default function AdminPage() {
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
       <div className={`w-full h-40 rounded-b-[40px] bg-gradient-to-br ${currentTheme.gradient} shadow-xl absolute top-0 left-0 z-0`}></div>
-      <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl p-2 flex justify-between items-center shadow-lg backdrop-blur-md border ${base.bar}`}>
+      <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl p-2 flex justify-between items-start shadow-lg backdrop-blur-md border ${base.bar}`}>
           <div 
              className="flex items-center gap-3 pl-2 cursor-pointer active:scale-95 transition-transform"
              onClick={() => setShowOnlineModal(true)}
@@ -453,9 +453,12 @@ export default function AdminPage() {
               <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
               <div className="leading-tight"><h1 className="font-bold text-sm">Modo Pizzaiolo</h1><p className="text-[10px] opacity-70 flex items-center gap-1"><Users size={10} className="text-green-500 animate-pulse"/> {onlineUsers} / {config.total_invitados}</p></div>
           </div>
-          <div className="flex gap-2 relative pr-1">
-              {/* BOTONES DE HERRAMIENTAS */}
-              <div className="flex items-center gap-2">
+          
+          <div className="flex flex-col items-end gap-2 pointer-events-none">
+              
+              {/* FILA 1: HERRAMIENTAS */}
+              <div className={`p-1 rounded-full border shadow-lg flex gap-1 pointer-events-auto ${base.bar} relative z-50`}>
+                  {/* Bulk Edit (Menu) */}
                   {view === 'menu' && (
                       <button 
                         onClick={() => setShowBulkModal(true)} 
@@ -471,30 +474,30 @@ export default function AdminPage() {
                   <button onClick={toggleDarkMode} className={`p-2 rounded-full border ${base.buttonSec}`}>{isDarkMode ? <Sun size={16}/> : <Moon size={16}/>}</button>
                   {view === 'cocina' && (<><button onClick={() => setOrden(o => o === 'estado' ? 'nombre' : 'estado')} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}</button><button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}</button></>)}
               </div>
+
+              {/* FILA 2: SESIÓN (A la derecha, debajo de herramientas) */}
+              <div className="flex items-center gap-2 pointer-events-auto relative z-40">
+                  {/* Logout */}
+                  <button 
+                    onClick={logout} 
+                    className={`p-2 rounded-full border shadow-lg ${base.bar} text-red-500 hover:bg-red-500/10 border-red-500/30`}
+                    title="Cerrar Sesión Admin"
+                  >
+                      <LogOut size={20} />
+                  </button>
+
+                  {/* Ir a Invitados */}
+                  <button 
+                    onClick={() => window.location.href='/'} 
+                    className={`p-2 rounded-full border shadow-lg ${base.bar} text-green-500 hover:bg-green-500/10 border-green-500/30`}
+                    title="Ir a Modo Invitados"
+                  >
+                      <Users size={20}/>
+                  </button>
+              </div>
           </div>
       </div>
       
-      {/* BOTONES DE SESIÓN FLOTANTES (ABAJO A LA DERECHA, ENCIMA DE LA BARRA INFERIOR) */}
-      <div className="fixed bottom-24 right-4 z-40 flex gap-2">
-          {/* Logout */}
-          <button 
-            onClick={logout} 
-            className={`p-3 rounded-full border shadow-xl ${base.card} text-red-500 border-red-500/30 bg-red-500/10 hover:bg-red-500 hover:text-white transition-all`}
-            title="Cerrar Sesión Admin"
-          >
-              <LogOut size={20} />
-          </button>
-
-          {/* Ir a Invitados */}
-          <button 
-            onClick={() => window.location.href='/'} 
-            className={`p-3 rounded-full border shadow-xl ${base.card} text-green-600 border-green-600/30 bg-green-500/10 hover:bg-green-500 hover:text-white transition-all`}
-            title="Ir a Modo Invitados"
-          >
-              <Users size={20}/>
-          </button>
-      </div>
-
       {/* ONLINE USERS MODAL */}
       {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
