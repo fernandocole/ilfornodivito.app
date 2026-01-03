@@ -402,7 +402,7 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
-  // --- CÁLCULO DE STOCK CORREGIDO (LÓGICA FINAL) ---
+  // --- CÁLCULO DE STOCK CORREGIDO (LÓGICA MATEMÁTICA DEFINITIVA) ---
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
