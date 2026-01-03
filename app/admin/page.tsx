@@ -230,6 +230,7 @@ export default function AdminPage() {
     } else alert('Incorrecto');
   };
 
+  // Logout corregido: Solo cambia el estado local, no redirige
   const logout = () => { 
       if(confirm("¿Cerrar sesión de administrador?")) {
         localStorage.removeItem('vito-admin-session'); 
@@ -288,7 +289,7 @@ export default function AdminPage() {
     if(inv.data) setInvitadosDB(inv.data); if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) actualizarStockGlobal();
   };
 
-  // --- ACTIONS ---
+  // --- ACTIONS (Aquí están las nuevas funciones) ---
 
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
@@ -453,47 +454,23 @@ export default function AdminPage() {
               <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
               <div className="leading-tight"><h1 className="font-bold text-sm">Modo Pizzaiolo</h1><p className="text-[10px] opacity-70 flex items-center gap-1"><Users size={10} className="text-green-500 animate-pulse"/> {onlineUsers} / {config.total_invitados}</p></div>
           </div>
-          <div className="flex flex-col items-end gap-2 pointer-events-none">
-              
-              {/* FILA 1: HERRAMIENTAS */}
-              <div className={`p-1 rounded-full border shadow-lg flex gap-1 pointer-events-auto ${base.bar} relative z-50`}>
-                  {/* Bulk Edit (Menu) */}
-                  {view === 'menu' && (
-                      <button 
-                        onClick={() => setShowBulkModal(true)} 
-                        className={`p-2 rounded-full border ${base.buttonSec} text-blue-500 border-blue-500/30 bg-blue-500/10`}
-                        title="Edición Masiva"
-                      >
-                          <Layers size={16}/>
-                      </button>
-                  )}
-
-                  <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border ${base.buttonSec}`}><Palette size={16}/></button>
-                  {showThemeSelector && (<div className="absolute top-12 right-0 bg-black/90 backdrop-blur p-2 rounded-xl flex gap-2 animate-in fade-in z-50 border border-white/10 shadow-xl">{THEMES.map(t => (<button key={t.name} onClick={() => selectTheme(t)} className={`w-6 h-6 rounded-full ${t.color} border-2 border-white ring-2 ring-transparent hover:scale-110 transition-transform`}></button>))}</div>)}
-                  <button onClick={toggleDarkMode} className={`p-2 rounded-full border ${base.buttonSec}`}>{isDarkMode ? <Sun size={16}/> : <Moon size={16}/>}</button>
-                  {view === 'cocina' && (<><button onClick={() => setOrden(o => o === 'estado' ? 'nombre' : 'estado')} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}</button><button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}</button></>)}
-              </div>
-
-              {/* FILA 2: SESIÓN */}
-              <div className="flex items-center gap-2 pointer-events-auto relative z-40">
-                  {/* Logout */}
+          
+          {/* BOTONES DE HERRAMIENTAS (Una sola línea) */}
+          <div className="flex items-center gap-2">
+              {view === 'menu' && (
                   <button 
-                    onClick={logout} 
-                    className={`p-2 rounded-full border shadow-lg ${base.bar} text-red-500 hover:bg-red-500/10 border-red-500/30`}
-                    title="Cerrar Sesión Admin"
+                    onClick={() => setShowBulkModal(true)} 
+                    className={`p-2 rounded-full border ${base.buttonSec} text-blue-500 border-blue-500/30 bg-blue-500/10`}
+                    title="Edición Masiva"
                   >
-                      <LogOut size={20} />
+                      <Layers size={16}/>
                   </button>
+              )}
 
-                  {/* Ir a Invitados */}
-                  <button 
-                    onClick={() => window.location.href='/'} 
-                    className={`p-2 rounded-full border shadow-lg ${base.bar} text-green-500 hover:bg-green-500/10 border-green-500/30`}
-                    title="Ir a Modo Invitados"
-                  >
-                      <Users size={20}/>
-                  </button>
-              </div>
+              <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border ${base.buttonSec}`}><Palette size={16}/></button>
+              {showThemeSelector && (<div className="absolute top-12 right-0 bg-black/90 backdrop-blur p-2 rounded-xl flex gap-2 animate-in fade-in z-50 border border-white/10 shadow-xl">{THEMES.map(t => (<button key={t.name} onClick={() => selectTheme(t)} className={`w-6 h-6 rounded-full ${t.color} border-2 border-white ring-2 ring-transparent hover:scale-110 transition-transform`}></button>))}</div>)}
+              <button onClick={toggleDarkMode} className={`p-2 rounded-full border ${base.buttonSec}`}>{isDarkMode ? <Sun size={16}/> : <Moon size={16}/>}</button>
+              {view === 'cocina' && (<><button onClick={() => setOrden(o => o === 'estado' ? 'nombre' : 'estado')} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}</button><button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}</button></>)}
           </div>
       </div>
       
@@ -604,6 +581,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* CONTENIDO PRINCIPAL */}
       <div className="relative z-10 pt-24 px-4 pb-36">
         
         {view === 'cocina' && (
@@ -649,6 +627,26 @@ export default function AdminPage() {
         </main>
       </div>
 
+      {/* BOTONES DE SESIÓN FLOTANTES (ABAJO A LA DERECHA) */}
+      <div className="fixed bottom-24 right-4 z-40 flex flex-col gap-3">
+          <button 
+            onClick={() => window.location.href='/'} 
+            className={`p-3 rounded-full border shadow-xl ${base.card} text-green-600 border-green-600/30 bg-green-500/10 hover:bg-green-500 hover:text-white transition-all`}
+            title="Ir a Modo Invitados"
+          >
+              <Users size={20}/>
+          </button>
+
+          <button 
+            onClick={logout} 
+            className={`p-3 rounded-full border shadow-xl ${base.card} text-red-500 border-red-500/30 bg-red-500/10 hover:bg-red-500 hover:text-white transition-all`}
+            title="Cerrar Sesión Admin"
+          >
+              <LogOut size={20} />
+          </button>
+      </div>
+
+      {/* BARRA DE NAVEGACIÓN INFERIOR */}
       <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
           <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[8px] uppercase font-bold">Cocina</span></button>
           <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[8px] uppercase font-bold">Pedidos</span></button>
