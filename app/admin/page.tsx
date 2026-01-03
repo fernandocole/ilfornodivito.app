@@ -5,10 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
   Palette, Sun, Moon, ArrowUpNarrowWide, ArrowDownAZ, Maximize2, Minimize2, ShieldAlert,
-  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy
+  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink
 } from 'lucide-react';
 
-// Imports de Vistas (Rutas corregidas)
+// Imports de Vistas
 import { KitchenView } from '../components/admin/views/KitchenView';
 import { OrdersView } from '../components/admin/views/OrdersView';
 import { InventoryView } from '../components/admin/views/InventoryView';
@@ -464,6 +464,15 @@ export default function AdminPage() {
               <button onClick={toggleDarkMode} className={`p-2 rounded-full border ${base.buttonSec}`}>{isDarkMode ? <Sun size={16}/> : <Moon size={16}/>}</button>
               {view === 'cocina' && (<><button onClick={() => setOrden(o => o === 'estado' ? 'nombre' : 'estado')} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}</button><button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-full border flex items-center gap-1 ${base.buttonSec}`}>{isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}</button></>)}
               
+              {/* NUEVO: BOTÓN IR A INVITADOS */}
+              <button 
+                onClick={() => window.location.href='/'} 
+                className={`p-2 rounded-full border ${base.buttonSec} mr-1 text-green-600 border-green-600/20 bg-green-500/10 hover:bg-green-500 hover:text-white`}
+                title="Ir a Modo Invitados"
+              >
+                  <Users size={16}/>
+              </button>
+
               {/* LOGOUT BUTTON */}
               <button onClick={logout} className={`p-2 rounded-full border ${base.buttonSec} ml-1 bg-red-500/10 border-red-500/30 text-red-500`}><LogOut size={16} /></button>
           </div>
