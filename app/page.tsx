@@ -404,6 +404,7 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
+  // --- CÁLCULO DE STOCK CORREGIDO ---
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
@@ -412,18 +413,14 @@ export default function VitoPizzaApp() {
           
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // CÁLCULO DE STOCK CORREGIDO
-          const wholePizzaStock = (pizza.stock || 0) * target;
-          const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
+          // Lógica estabilizada para stock
+          // Reconstruye el "total disponible real" basándose en el stock DB (que es un piso) y los pedidos activos.
+          const dbStockWholePizzas = pizza.stock || 0;
+          const impliedTotalWholePizzas = dbStockWholePizzas + Math.ceil(pen / target);
+          const totalPotentialSlices = impliedTotalWholePizzas * target;
           
-          let stockRestante = wholePizzaStock + remainder;
-
-          // Parche de latencia: Cuando se pide la 1ra porción de una pizza nueva (resto = target - 1),
-          // a veces la DB aún reporta el stock de pizzas enteras anterior (alto), generando un salto visual (ej: 44 -> 47).
-          // Si detectamos que se acaba de abrir una pizza (pen % target === 1), restamos esa pizza "fantasma" del total.
-          if (pen % target === 1) {
-             stockRestante = Math.max(0, stockRestante - target);
-          }
+          // Calcula el stock restante restando lo que ya está pedido
+          const stockRestante = Math.max(0, totalPotentialSlices - pen);
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
