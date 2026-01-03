@@ -402,7 +402,6 @@ export default function VitoPizzaApp() {
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
-  // --- CÁLCULO DE STOCK CORREGIDO (LÓGICA MATEMÁTICA DEFINITIVA) ---
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
@@ -411,16 +410,18 @@ export default function VitoPizzaApp() {
           
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // Lógica estabilizada: 
-          // Si DB dice 10 pizzas, y tengo 1 porción pedida (pen % target == 1):
-          // Significa que la DB ya bajó a 9.
-          // Stock real = (9 * 4) + (4 - 1) = 36 + 3 = 39. Correcto.
-          // Formula general: (DB_Stock * target) + (target - (pen % target))
-          // Si pen % target es 0, no sumamos nada extra, es DB_Stock * target.
+          // Lógica de visualización "HÍBRIDA": "X pizzas + Y porciones"
+          // Separamos stock en enteros y remanente para mostrarlo claramente en la UI si se requiere, 
+          // O usamos esta lógica para tener una cantidad total "honesta".
           
-          const wholePizzaStock = (pizza.stock || 0) * target;
+          // Calculamos remanente (porciones sueltas de la pizza abierta actual)
           const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
-          const stockRestante = wholePizzaStock + remainder;
+          
+          // Stock que viene de la DB (Pizzas enteras)
+          const dbStockWhole = pizza.stock || 0;
+          
+          // Stock Total en porciones = (Enteras * Porciones) + (Sueltas de la abierta)
+          const stockRestante = (dbStockWhole * target) + remainder;
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
@@ -434,7 +435,21 @@ export default function VitoPizzaApp() {
               displayDesc = autoTranslations[pizza.id][lang].desc; 
           } 
           
-          return { ...pizza, displayName, displayDesc, stockRestante, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: countRating, sortRating: sortR, totalPendientes: pen }; 
+          return { 
+              ...pizza, 
+              displayName, 
+              displayDesc, 
+              stockRestante, // Stock Total en porciones (Unificado)
+              dbStockWhole, // Stock Entero (Para visualización alternativa)
+              remainder,    // Porciones sueltas (Para visualización alternativa)
+              target, 
+              ocupadasActual: pen % target, 
+              faltanParaCompletar: target - (pen % target), 
+              avgRating: avg, 
+              countRating: countRating, 
+              sortRating: sortR, 
+              totalPendientes: pen 
+          }; 
       }); 
   }, [pizzas, pedidos, config, allRatings, lang, autoTranslations]);
 
