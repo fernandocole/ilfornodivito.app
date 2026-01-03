@@ -447,7 +447,7 @@ export default function AdminPage() {
       <div className={`w-full h-40 rounded-b-[40px] bg-gradient-to-br ${currentTheme.gradient} shadow-xl absolute top-0 left-0 z-0`}></div>
       <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div 
-             className={`p-2 rounded-2xl shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer transition-transform active:scale-95 ${base.bar}`}
+             className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer transition-transform active:scale-95 ${base.bar}`}
              onClick={() => setShowOnlineModal(true)}
           >
               <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
