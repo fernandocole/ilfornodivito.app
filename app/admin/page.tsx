@@ -230,7 +230,14 @@ export default function AdminPage() {
     } else alert('Incorrecto');
   };
 
-  const logout = () => { localStorage.removeItem('vito-admin-session'); window.location.href = '/'; };
+  // MODIFICADO: Logout ahora solo cambia el estado, no redirige
+  const logout = () => { 
+      if(confirm("¿Cerrar sesión de administrador?")) {
+        localStorage.removeItem('vito-admin-session'); 
+        setAutenticado(false); 
+      }
+  };
+  
   const refreshLogsOnly = async () => { const { data } = await supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(100); if (data) setLogs(data); };
 
   const sendAdminNotification = async (title: string, body: string) => {
