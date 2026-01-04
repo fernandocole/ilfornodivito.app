@@ -289,22 +289,6 @@ export default function AdminPage() {
   };
 
   // --- ACTIONS ---
-  const cleanOrdersByState = async (status: 'pendiente' | 'cocinando' | 'entregado') => {
-    const label = status === 'pendiente' ? 'EN ESPERA' : status === 'cocinando' ? 'EN PREPARACIÓN' : 'LISTAS/ENTREGADAS';
-    if (!confirm(`¿Estás seguro de BORRAR todos los pedidos ${label}?`)) return;
-    
-    // Delete from DB
-    await supabase.from('pedidos').delete().eq('estado', status);
-    
-    // Special handling for 'cocinando' to reset pizza flags
-    if (status === 'cocinando') {
-        // Reset cooking status for all pizzas
-        await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000');
-    }
-    
-    await cargarDatos();
-    alert(`Pedidos ${label} eliminados.`);
-  };
 
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
@@ -343,7 +327,6 @@ export default function AdminPage() {
       }
   };
 
-  // NUEVA FUNCIÓN: Eliminar unidad por estado específico
   const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => {
       const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado);
 
@@ -377,6 +360,71 @@ export default function AdminPage() {
       }
   };
 
+  const cleanOrdersByState = async (status: 'pendiente' | 'cocinando' | 'entregado') => {
+    const label = status === 'pendiente' ? 'EN ESPERA' : status === 'cocinando' ? 'EN PREPARACIÓN' : 'LISTAS/ENTREGADAS';
+    if (!confirm(`¿Estás seguro de BORRAR todos los pedidos ${label}?`)) return;
+    
+    // Delete from DB
+    await supabase.from('pedidos').delete().eq('estado', status);
+    
+    // Special handling for 'cocinando' to reset pizza flags
+    if (status === 'cocinando') {
+        // Reset cooking status for all pizzas
+        await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    
+    await cargarDatos();
+    alert(`Pedidos ${label} eliminados.`);
+  };
+
+  const resetAllOrders = async () => { 
+    const promptText = prompt('Escribe "BORRAR TODO" para eliminar TODOS los pedidos del día.'); 
+    if (promptText?.toUpperCase() !== "BORRAR TODO") return; 
+
+    // --- NUEVA LÓGICA DE REPONER STOCK ---
+    const reponer = confirm("¿Reponer stock al inventario antes de borrar?");
+    if (reponer) {
+        // Calculamos ingredientes de TODOS los pedidos activos
+        const pedidosActivos = pedidos.filter(p => p.estado !== 'cancelado'); // Asumiendo que no guardamos cancelados, pero por si acaso.
+        const stockDevolver: Record<string, number> = {};
+
+        pedidosActivos.forEach(p => {
+            const pizza = pizzas.find(pz => pz.id === p.pizza_id);
+            if(pizza) {
+                const receta = recetas.filter(r => r.pizza_id === p.pizza_id);
+                const portions = pizza.porciones_individuales || config.porciones_por_pizza || 1;
+                const ratio = p.cantidad_porciones / portions;
+
+                receta.forEach(ing => {
+                    if(ing.ingrediente_id && ing.cantidad_requerida) {
+                         stockDevolver[ing.ingrediente_id] = (stockDevolver[ing.ingrediente_id] || 0) + (ing.cantidad_requerida * ratio);
+                    }
+                });
+            }
+        });
+
+        // Actualizar DB
+        const updates = Object.keys(stockDevolver).map(async (ingId) => {
+            const ingActual = ingredientes.find(i => i.id === ingId);
+            if (ingActual) {
+                await supabase.from('ingredientes').update({ 
+                    cantidad_disponible: ingActual.cantidad_disponible + stockDevolver[ingId] 
+                }).eq('id', ingId);
+            }
+        });
+        await Promise.all(updates);
+        alert("Stock repuesto al inventario.");
+    }
+    // -------------------------------------
+
+    const { error } = await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000'); 
+    if(!error) { 
+        await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000'); 
+        alert("OK, pedidos eliminados."); 
+        cargarDatos(); 
+    } 
+  };
+  
   const duplicateP = async (pizza: any) => {
       const confirmText = `¿Duplicar "${pizza.nombre}"? \nSe copiará la información y la receta.`;
       if (!confirm(confirmText)) return;
@@ -403,7 +451,6 @@ export default function AdminPage() {
   const addU = async () => { if(!newGuestName) return; const { error } = await supabase.from('lista_invitados').insert([{ nombre: newGuestName }]); if(error) alert('Error'); else { setNewGuestName(''); cargarDatos(); } };
   const toggleB = async (u: any) => { let uid = u.id; if(!uid) { const { data } = await supabase.from('lista_invitados').insert([{ nombre: u.nombre }]).select().single(); if(data) uid = data.id; else return; } await supabase.from('lista_invitados').update({ bloqueado: !u.bloqueado }).eq('id', uid); cargarDatos(); };
   const guardarMotivo = async (nombre: string, u: any) => { const motivo = tempMotivos[nombre]; if (motivo === undefined) return; let uid = u?.id; if (!uid) { const { data, error } = await supabase.from('lista_invitados').insert([{ nombre: nombre, motivo_bloqueo: motivo, bloqueado: true }]).select().single(); if (error || !data) { alert("Error"); return; } } else { await supabase.from('lista_invitados').update({ motivo_bloqueo: motivo }).eq('id', uid); } alert("OK"); cargarDatos(); };
-  const resetAllOrders = async () => { const promptText = prompt('Escribe "BORRAR TODO"'); if (promptText?.toUpperCase() !== "BORRAR TODO") return; const { error } = await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000'); if(!error) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000'); alert("OK"); cargarDatos(); } };
   
   const addIng = async () => { if(!newIngName) return; const qtyNum = newIngQty === '' ? 0 : Number(newIngQty); const existing = ingredientes.find(i => i.nombre.toLowerCase() === newIngName.toLowerCase()); if (existing) { await supabase.from('ingredientes').update({ cantidad_disponible: existing.cantidad_disponible + qtyNum }).eq('id', existing.id); } else { await supabase.from('ingredientes').insert([{ nombre: newIngName, cantidad_disponible: qtyNum, unidad: newIngUnit, categoria: newIngCat }]); } setNewIngName(''); setNewIngQty(''); await actualizarStockGlobal(); cargarDatos(); };
   const startEditIng = (ing: any) => { setEditingIngId(ing.id); setEditIngForm({ nombre: ing.nombre, cantidad: ing.cantidad_disponible, unidad: ing.unidad || 'g', categoria: ing.categoria || 'General' }); };
