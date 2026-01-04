@@ -1,29 +1,42 @@
-import { Bell, BellOff, Users, Type, ArrowUpNarrowWide, ArrowDownAZ, TrendingUp, Minimize2, Maximize2, Sun, Moon, Palette, Download, Lock, LogOut } from 'lucide-react';
+import { Bell, BellOff, Users, Type, ArrowUpNarrowWide, ArrowDownAZ, TrendingUp, Minimize2, Maximize2, Sun, Moon, Palette, Download, Lock, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
 
 export const TopBar = ({ 
     base, notifEnabled, toggleNotificaciones, rotarIdioma, lang, onlineUsers, config, 
     isDarkMode, getBtnClass, cycleTextSize, orden, toggleOrden, isCompact, toggleCompact, 
     toggleDarkMode, showThemeSelector, setShowThemeSelector, THEMES, changeTheme, isInstallable, handleInstallClick,
-    onLogout // Nueva prop para cerrar sesión
+    onLogout, userAvatar // Nueva prop para la foto
 }: any) => {
     return (
       <div className="fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none">
-        <div className={`p-1 rounded-full border shadow-lg flex gap-1 pointer-events-auto ${base.bar}`}>
+        
+        {/* --- IZQUIERDA: USUARIO Y NOTIFICACIONES --- */}
+        <div className={`p-1 rounded-full border shadow-lg flex gap-1 pointer-events-auto items-center ${base.bar}`}>
+            
+            {/* FOTO DE PERFIL O ICONO */}
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-black/20 flex-shrink-0 ml-1">
+                {userAvatar ? (
+                    <img src={userAvatar} alt="Yo" className="w-full h-full object-cover" />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/50"><User size={16}/></div>
+                )}
+            </div>
+
             <button onClick={toggleNotificaciones} className={getBtnClass(notifEnabled)}>
-                {notifEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                {notifEnabled ? <Bell size={18} /> : <BellOff size={18} />}
             </button>
-            <button onClick={rotarIdioma} className={getBtnClass(false) + " font-bold text-xs border border-current/20"}>
+            <button onClick={rotarIdioma} className={getBtnClass(false) + " font-bold text-[10px] w-8 h-8 border border-current/20 flex items-center justify-center"}>
                 {lang.toUpperCase()}
             </button>
-            <div className="flex items-center justify-center gap-1 p-2 rounded-full text-xs font-bold transition-all animate-pulse">
-                <Users size={16} className={isDarkMode ? "text-green-400" : "text-green-700"} />
+            <div className="flex items-center justify-center gap-1 px-2 rounded-full text-xs font-bold transition-all">
+                <Users size={14} className={isDarkMode ? "text-green-400" : "text-green-700"} />
                 <span className={isDarkMode ? 'text-white' : 'text-black'}>
-                    {onlineUsers} / {config.total_invitados}
+                    {onlineUsers}
                 </span>
             </div>
         </div>
 
+        {/* --- DERECHA: HERRAMIENTAS --- */}
         <div className="flex flex-col items-end gap-2 pointer-events-none">
           <div className={`p-1 rounded-full border shadow-lg flex gap-1 pointer-events-auto ${base.bar} relative z-50`}>
               <button onClick={cycleTextSize} className={getBtnClass(false)}>
