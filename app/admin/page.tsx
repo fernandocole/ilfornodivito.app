@@ -288,7 +288,7 @@ export default function AdminPage() {
     if(inv.data) setInvitadosDB(inv.data); if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) actualizarStockGlobal();
   };
 
-  // --- ACTIONS (NUEVO: Función de limpieza por estado) ---
+  // --- ACTIONS ---
   const cleanOrdersByState = async (status: 'pendiente' | 'cocinando' | 'entregado') => {
     const label = status === 'pendiente' ? 'EN ESPERA' : status === 'cocinando' ? 'EN PREPARACIÓN' : 'LISTAS/ENTREGADAS';
     if (!confirm(`¿Estás seguro de BORRAR todos los pedidos ${label}?`)) return;
@@ -306,7 +306,6 @@ export default function AdminPage() {
     alert(`Pedidos ${label} eliminados.`);
   };
 
-  // ... (Resto de las acciones existentes: eliminarUnidad, duplicateP, updateP, etc.)
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
       
@@ -341,6 +340,40 @@ export default function AdminPage() {
           await actualizarStockGlobal();
       } else {
           alert("No se encontraron pedidos de este usuario para esta comida.");
+      }
+  };
+
+  // NUEVA FUNCIÓN: Eliminar unidad por estado específico
+  const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => {
+      const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado);
+
+      if (candidate) {
+          if (!confirm(`¿Eliminar 1 unidad (${estado}) de ${nombre}?`)) return;
+          
+          const devolverStock = confirm("¿Devolver los ingredientes al Inventario?");
+          if (devolverStock) {
+              const pizza = pizzas.find(p => p.id === pizzaId);
+              const porcionesTotal = pizza?.porciones_individuales || config.porciones_por_pizza || 1;
+              const recetaPizza = recetas.filter(r => r.pizza_id === pizzaId);
+              if (recetaPizza.length > 0) {
+                  const fraccion = candidate.cantidad_porciones / porcionesTotal;
+                  const updates = recetaPizza.map(async (item: any) => {
+                      const ing = ingredientes.find(i => i.id === item.ingrediente_id);
+                      if (ing) {
+                          const devolver = item.cantidad_requerida * fraccion;
+                          await supabase.from('ingredientes').update({ cantidad_disponible: ing.cantidad_disponible + devolver }).eq('id', ing.id);
+                      }
+                  });
+                  await Promise.all(updates);
+                  alert("Ingredientes devueltos.");
+              }
+          }
+          await supabase.from('pedidos').delete().eq('id', candidate.id);
+          setPedidos(prev => prev.filter(p => p.id !== candidate.id)); 
+          cargarDatos();
+          await actualizarStockGlobal();
+      } else {
+          alert("No se encontró ese pedido.");
       }
   };
 
@@ -648,8 +681,7 @@ export default function AdminPage() {
 
         <main className="max-w-4xl mx-auto space-y-4 w-full">
             {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} />}
-            {/* AQUÍ SE PASA LA NUEVA PROP cleanOrdersByState */}
-            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} cleanOrdersByState={cleanOrdersByState} />}
+            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} />}
             {view === 'ingredientes' && <InventoryView 
                 base={base} currentTheme={currentTheme} ingredients={ingredientes} 
                 newIngName={newIngName} setNewIngName={setNewIngName} 
