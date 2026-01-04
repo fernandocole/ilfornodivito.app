@@ -1,14 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Trash2, Edit3, Save, X, Plus, Package, Share2, Smartphone, MessageCircle } from 'lucide-react';
 
 export const InventoryView = ({ 
     base, currentTheme, ingredients, newIngName, setNewIngName, newIngQty, setNewIngQty, 
     newIngUnit, setNewIngUnit, newIngCat, setNewIngCat, 
     addIng, editingIngId, editIngForm, setEditIngForm, saveEditIng, cancelEditIng, delIng, 
-    startEditIng, reservedState, quickUpdateStock 
+    startEditIng, reservedState, quickUpdateStock,
+    // Nuevas props
+    inventoryFilterCategory, setInventoryFilterCategory
 }: any) => {
     
-    const [filterCategory, setFilterCategory] = useState<string>('Todos');
+    // Eliminamos useState local y usamos props
     const [showShareModal, setShowShareModal] = useState(false);
 
     const isDark = base.bg.includes('neutral-950');
@@ -27,14 +29,14 @@ export const InventoryView = ({
 
     // 2. Filtrar ingredientes
     const filteredIngredients = useMemo(() => {
-        if (filterCategory === 'Todos') return ingredients;
-        return ingredients.filter((i: any) => (i.categoria || 'General') === filterCategory);
-    }, [ingredients, filterCategory]);
+        if (inventoryFilterCategory === 'Todos') return ingredients;
+        return ingredients.filter((i: any) => (i.categoria || 'General') === inventoryFilterCategory);
+    }, [ingredients, inventoryFilterCategory]);
 
     // 3. Funciones de Compartir
     const generateShareText = () => {
         if (filteredIngredients.length === 0) return "Lista vacía";
-        let text = `*🛒 Lista de Compras (${filterCategory})*\n\n`;
+        let text = `*🛒 Lista de Compras (${inventoryFilterCategory})*\n\n`;
         filteredIngredients.forEach((ing: any) => {
             text += `- ${ing.nombre}: ${ing.cantidad_disponible} ${ing.unidad}\n`;
         });
@@ -84,9 +86,9 @@ export const InventoryView = ({
                 {uniqueCategories.map(cat => (
                     <button
                         key={cat}
-                        onClick={() => setFilterCategory(cat)}
+                        onClick={() => setInventoryFilterCategory(cat)}
                         className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
-                            filterCategory === cat 
+                            inventoryFilterCategory === cat 
                                 ? `${currentTheme.color} text-white border-transparent shadow-md` 
                                 : base.buttonSec
                         }`}
@@ -234,21 +236,14 @@ export const InventoryView = ({
 
             {/* MODAL DE COMPARTIR - ESTILO BOTTOM SHEET ELEVADO */}
             {showShareModal && (
-                // z-[60] para estar sobre la barra de navegación (z-50)
-                // pb-24 para elevarlo visualmente sobre la barra
                 <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in p-4 pb-24 sm:pb-4">
-                    
-                    {/* Fondo Clickable para cerrar */}
                     <div className="absolute inset-0" onClick={() => setShowShareModal(false)}></div>
-
                     <div className={`${base.card} w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative border z-10 animate-in slide-in-from-bottom-10 duration-300`}>
-                        {/* Indicador de arrastre visual */}
                         <div className="w-12 h-1 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-6 opacity-50"></div>
-
                         <button onClick={() => setShowShareModal(false)} className="absolute top-6 right-6 opacity-50 hover:opacity-100 p-1"><X size={20}/></button>
                         
                         <h3 className="text-xl font-bold mb-1 text-center">Compartir Lista</h3>
-                        <p className="text-sm opacity-60 mb-6 text-center">Enviando lista de: <b>{filterCategory}</b></p>
+                        <p className="text-sm opacity-60 mb-6 text-center">Enviando lista de: <b>{inventoryFilterCategory}</b></p>
                         
                         <div className="space-y-3">
                             <button 

@@ -76,6 +76,11 @@ export default function AdminPage() {
   
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
+  // --- ESTADOS PERSISTENTES DE VISTAS (Paso 7) ---
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
+  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+
   // DATOS
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
@@ -173,6 +178,11 @@ export default function AdminPage() {
       innerCard: "bg-neutral-100 border-neutral-200 text-gray-900",
       uploadBox: "bg-neutral-100 border-neutral-300 hover:bg-neutral-200"
   };
+
+  // --- SCROLL FIX (Paso 7) ---
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   useEffect(() => {
     const session = localStorage.getItem('vito-admin-session');
@@ -334,7 +344,6 @@ export default function AdminPage() {
           }
           await supabase.from('pedidos').delete().eq('id', candidate.id);
           
-          // --- CORRECCIÓN ZOMBIE STATE ---
           if (candidate.estado === 'cocinando') {
              const { count } = await supabase.from('pedidos')
                 .select('*', { count: 'exact', head: true })
@@ -347,7 +356,6 @@ export default function AdminPage() {
                     .eq('id', pizzaId);
              }
           }
-          // -------------------------------
 
           setPedidos(prev => prev.filter(p => p.id !== candidate!.id)); 
           cargarDatos();
@@ -383,7 +391,6 @@ export default function AdminPage() {
           }
           await supabase.from('pedidos').delete().eq('id', candidate.id);
 
-          // --- CORRECCIÓN ZOMBIE STATE ---
           if (estado === 'cocinando') {
              const { count } = await supabase.from('pedidos')
                 .select('*', { count: 'exact', head: true })
@@ -396,7 +403,6 @@ export default function AdminPage() {
                     .eq('id', pizzaId);
              }
           }
-          // -------------------------------
 
           setPedidos(prev => prev.filter(p => p.id !== candidate.id)); 
           cargarDatos();
@@ -423,7 +429,6 @@ export default function AdminPage() {
     alert(`Pedidos ${label} eliminados.`);
   };
 
-  // NUEVO: Función para forzar la parada de cocción desde la vista Cocina (Backup)
   const forceStopCooking = async (pizzaId: string) => {
       if(!confirm("¿Forzar detención? Esto apagará el indicador 'En Horno' aunque haya errores.")) return;
       await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId);
@@ -438,7 +443,7 @@ export default function AdminPage() {
     const reponer = confirm("¿Reponer stock al inventario antes de borrar?");
     if (reponer) {
         // Calculamos ingredientes de TODOS los pedidos activos
-        const pedidosActivos = pedidos.filter(p => p.estado !== 'cancelado'); // Asumiendo que no guardamos cancelados, pero por si acaso.
+        const pedidosActivos = pedidos.filter(p => p.estado !== 'cancelado'); 
         const stockDevolver: Record<string, number> = {};
 
         pedidosActivos.forEach(p => {
@@ -987,8 +992,18 @@ export default function AdminPage() {
                 setEditIngForm={setEditIngForm} saveEditIng={saveEditIng} cancelEditIng={cancelEditIng} 
                 delIng={delIng} startEditIng={startEditIng} reservedState={reservedState} 
                 quickUpdateStock={quickUpdateStock} 
+                // Props de filtro persistente
+                inventoryFilterCategory={inventoryFilterCategory} 
+                setInventoryFilterCategory={setInventoryFilterCategory}
             />}
-            {view === 'menu' && <MenuView base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} setNewPizzaType={setNewPizzaType} />}
+            {view === 'menu' && <MenuView 
+                base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} setNewPizzaType={setNewPizzaType} 
+                // Props de filtro persistente
+                typeFilter={menuTypeFilter}
+                setTypeFilter={setMenuTypeFilter}
+                sortOrder={menuSortOrder}
+                setSortOrder={setMenuSortOrder}
+            />}
             {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
             {view === 'usuarios' && <UsersView base={base} newGuestName={newGuestName} setNewGuestName={setNewGuestName} addU={addU} allUsersList={allUsersList} resetU={resetU} toggleB={toggleB} eliminarUsuario={eliminarUsuario} tempMotivos={tempMotivos} setTempMotivos={setTempMotivos} guardarMotivo={guardarMotivo} currentTheme={currentTheme} resetAllOrders={resetAllOrders} />}
             {view === 'config' && <ConfigView base={base} config={config} setConfig={setConfig} isDarkMode={isDarkMode} resetAllOrders={resetAllOrders} newPass={newPass} setNewPass={setNewPass} confirmPass={confirmPass} setConfirmPass={setConfirmPass} changePass={changePass} currentTheme={currentTheme} sessionDuration={sessionDuration} setSessionDuration={setSessionDuration} />}

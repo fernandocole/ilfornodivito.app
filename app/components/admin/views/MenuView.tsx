@@ -16,14 +16,12 @@ export const MenuView = ({
     setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP, duplicateP,
     tempRecipeIng, setTempRecipeIng, tempRecipeQty, setTempRecipeQty, addToExistingPizza, removeFromExistingPizza,
     reservedState, calcularStockDinamico, updateLocalRecipe, 
-    newPizzaType, setNewPizzaType 
+    newPizzaType, setNewPizzaType,
+    typeFilter, setTypeFilter, sortOrder, setSortOrder
 }: any) => {
 
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [showNewForm, setShowNewForm] = useState(false);
-    
-    const [typeFilter, setTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
-    const [sortOrder, setSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
 
     const toggleExpand = (id: string, forceState?: boolean) => {
         setExpanded(prev => ({ ...prev, [id]: forceState !== undefined ? forceState : !prev[id] }));
@@ -149,7 +147,7 @@ export const MenuView = ({
                                 <option value="">+ Ingrediente</option>
                                 {ingredients.map((i: any) => <option key={i.id} value={`${i.id}|${i.nombre}`}>{i.nombre} (Disp: {i.cantidad_disponible})</option>)}
                             </select>
-                            <input type="number" className={`w-14 p-2 text-sm rounded-xl text-center font-bold outline-none bg-white dark:bg-black/20 text-black dark:text-white`} value={newPizzaRecipeQty} onChange={(e: any) => setNewPizzaRecipeQty(Number(e.target.value) || '')} placeholder="Cant" />
+                            <input type="number" placeholder="Cant" className={`w-14 p-2 text-sm rounded-xl text-center font-bold outline-none bg-white dark:bg-black/20 text-black dark:text-white`} value={newPizzaRecipeQty} onChange={(e: any) => setNewPizzaRecipeQty(Number(e.target.value) || '')} />
                             <button onClick={addToNewPizzaRecipe} className="bg-neutral-800 dark:bg-white text-white dark:text-black px-4 rounded-xl text-sm font-bold shadow-sm flex-shrink-0">OK</button>
                         </div>
                     </div>
@@ -257,7 +255,7 @@ export const MenuView = ({
                                 <div className="flex gap-2">
                                     <select className={`flex-1 w-0 min-w-0 p-1.5 text-xs rounded-lg font-bold outline-none bg-white dark:bg-black/20 text-black dark:text-white`} value={tempRecipeIng[p.id] || ''} onChange={(e: any) => setTempRecipeIng({...tempRecipeIng, [p.id]: e.target.value})}>
                                         <option value="">+ Ingrediente</option>
-                                        {ingredients.map((i: any) => <option key={i.id} value={`${i.id}|${i.nombre}`}>{i.nombre} (Disp: {Math.max(0, i.cantidad_disponible - (reservedState[i.id] || 0))})</option>)}
+                                        {ingredients.map((i: any) => <option key={i.id} value={`${i.id}|${i.nombre}`}>{i.nombre} (Disp: {i.cantidad_disponible})</option>)}
                                     </select>
                                     <input type="number" placeholder="Cant" className={`w-12 p-1.5 text-xs rounded-lg text-center font-bold outline-none bg-white dark:bg-black/20 text-black dark:text-white`} value={tempRecipeQty[p.id] || ''} onChange={(e: any) => setTempRecipeQty({...tempRecipeQty, [p.id]: Number(e.target.value) || ''})} />
                                     <button onClick={() => {
