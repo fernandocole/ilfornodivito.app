@@ -474,13 +474,50 @@ export default function AdminPage() {
   const delIng = async (id: string) => { if(confirm('¿Borrar?')) await supabase.from('ingredientes').delete().eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
   const quickUpdateStock = async (id: string, current: number, add: number) => { await supabase.from('ingredientes').update({cantidad_disponible: current + add}).eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
 
-  // --- FUNCIONES RESTAURADAS ---
-  const saveBulkIngredient = async () => { if (!bulkIngId || bulkSelectedPizzas.length === 0) { alert("Selecciona ingrediente y al menos una pizza."); return; } if (bulkMode === 'SET' && Number(bulkQty) <= 0) { alert("Ingresa una cantidad válida."); return; } const actionText = bulkMode === 'REMOVE' ? 'ELIMINAR ingrediente de' : 'Aplicar cambios a'; const confirmText = `¿${actionText} ${bulkSelectedPizzas.length} items?`; if (!confirm(confirmText)) return; try { if (bulkMode === 'REMOVE') { for (const pid of bulkSelectedPizzas) { await supabase.from('recetas').delete().eq('pizza_id', pid).eq('ingrediente_id', bulkIngId); } alert("¡Ingrediente eliminado de la selección!"); } else { for (const pid of bulkSelectedPizzas) { const { data: existingRecipe } = await supabase.from('recetas').select('*').eq('pizza_id', pid).eq('ingrediente_id', bulkIngId).single(); if (existingRecipe) await supabase.from('recetas').update({ cantidad_requerida: Number(bulkQty) }).eq('id', existingRecipe.id); else await supabase.from('recetas').insert([{ pizza_id: pid, ingrediente_id: bulkIngId, cantidad_requerida: Number(bulkQty) }]); } alert("¡Aplicado correctamente!"); } setShowBulkModal(false); setBulkSelectedPizzas([]); setBulkQty(''); setBulkIngId(''); await cargarDatos(); await actualizarStockGlobal(); } catch (error: any) { alert("Error aplicando cambios masivos: " + error.message); } };
-  const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
+  // --- MODIFICADO: Sumar cantidad si ya existe el ingrediente ---
+  const addToNewPizzaRecipe = () => { 
+      if(!newPizzaSelectedIng) return; 
+      const [ingId, name] = newPizzaSelectedIng.split('|'); 
+      const qty = Number(newPizzaRecipeQty); 
+      if(qty <= 0) return; 
+      
+      setNewPizzaIngredients(prev => {
+          const exists = prev.findIndex(p => p.ingrediente_id === ingId);
+          if (exists !== -1) {
+              const updated = [...prev];
+              updated[exists] = { ...updated[exists], cantidad: Number(updated[exists].cantidad) + qty };
+              return updated;
+          }
+          return [...prev, { ingrediente_id: ingId, nombre: name, cantidad: qty }];
+      });
+      setNewPizzaSelectedIng(''); 
+      setNewPizzaRecipeQty(1); 
+  };
 
-  const addToNewPizzaRecipe = () => { if(!newPizzaSelectedIng) return; const [ingId, name] = newPizzaSelectedIng.split('|'); const qty = Number(newPizzaRecipeQty); if(qty <= 0) return; setNewPizzaIngredients(prev => [...prev, { ingrediente_id: ingId, nombre: name, cantidad: qty }]); setNewPizzaSelectedIng(''); setNewPizzaRecipeQty(1); };
   const removeFromNewPizzaRecipe = (idx: number) => { setNewPizzaIngredients(prev => prev.filter((_, i) => i !== idx)); };
-  const addToExistingPizza = (pizzaId: string, ingId: string, name: string, qty: any, currentRecipe: any[]) => { const q = Number(qty); if(q <= 0) return; const newRecipe = [...currentRecipe, { ingrediente_id: ingId, cantidad_requerida: q, nombre: name }]; updateLocalRecipe(pizzaId, newRecipe); };
+  
+  // --- MODIFICADO: Sumar cantidad si ya existe el ingrediente ---
+  const addToExistingPizza = (pizzaId: string, ingId: string, name: string, qty: any, currentRecipe: any[]) => { 
+      const q = Number(qty); 
+      if(q <= 0) return; 
+      
+      const existingIndex = currentRecipe.findIndex((r: any) => r.ingrediente_id === ingId);
+      let newRecipe;
+
+      if (existingIndex !== -1) {
+          newRecipe = [...currentRecipe];
+          const oldQty = Number(newRecipe[existingIndex].cantidad_requerida);
+          newRecipe[existingIndex] = {
+              ...newRecipe[existingIndex],
+              cantidad_requerida: oldQty + q
+          };
+      } else {
+          newRecipe = [...currentRecipe, { ingrediente_id: ingId, cantidad_requerida: q, nombre: name }];
+      }
+      
+      updateLocalRecipe(pizzaId, newRecipe); 
+  };
+
   const removeFromExistingPizza = (pizzaId: string, idx: number, currentRecipe: any[]) => { const newRecipe = currentRecipe.filter((_, i) => i !== idx); updateLocalRecipe(pizzaId, newRecipe); };
   
   const savePizzaChanges = async (id: string) => { const changes = edits[id]; if (!changes) return; const { local_recipe, ...pizzaFields } = changes; if (Object.keys(pizzaFields).length > 0) { await supabase.from('menu_pizzas').update(pizzaFields).eq('id', id); } if (local_recipe) { await supabase.from('recetas').delete().eq('pizza_id', id); if (local_recipe.length > 0) { const rows = local_recipe.map((r: any) => ({ pizza_id: id, ingrediente_id: r.ingrediente_id, cantidad_requerida: r.cantidad_requerida })); await supabase.from('recetas').insert(rows); } } await cargarDatos(); await actualizarStockGlobal(); setEdits(prev => { const newEdits = { ...prev }; delete newEdits[id]; return newEdits; }); };
