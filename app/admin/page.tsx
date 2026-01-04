@@ -333,6 +333,22 @@ export default function AdminPage() {
               }
           }
           await supabase.from('pedidos').delete().eq('id', candidate.id);
+          
+          // --- CORRECCIÓN ZOMBIE STATE ---
+          if (candidate.estado === 'cocinando') {
+             const { count } = await supabase.from('pedidos')
+                .select('*', { count: 'exact', head: true })
+                .eq('pizza_id', pizzaId)
+                .eq('estado', 'cocinando');
+             
+             if (count === 0) {
+                 await supabase.from('menu_pizzas')
+                    .update({ cocinando: false, cocinando_inicio: null })
+                    .eq('id', pizzaId);
+             }
+          }
+          // -------------------------------
+
           setPedidos(prev => prev.filter(p => p.id !== candidate!.id)); 
           cargarDatos();
           await actualizarStockGlobal();
@@ -341,7 +357,6 @@ export default function AdminPage() {
       }
   };
 
-  // NUEVA FUNCIÓN: Eliminar unidad por estado específico
   const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => {
       const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado);
 
@@ -367,6 +382,22 @@ export default function AdminPage() {
               }
           }
           await supabase.from('pedidos').delete().eq('id', candidate.id);
+
+          // --- CORRECCIÓN ZOMBIE STATE ---
+          if (estado === 'cocinando') {
+             const { count } = await supabase.from('pedidos')
+                .select('*', { count: 'exact', head: true })
+                .eq('pizza_id', pizzaId)
+                .eq('estado', 'cocinando');
+             
+             if (count === 0) {
+                 await supabase.from('menu_pizzas')
+                    .update({ cocinando: false, cocinando_inicio: null })
+                    .eq('id', pizzaId);
+             }
+          }
+          // -------------------------------
+
           setPedidos(prev => prev.filter(p => p.id !== candidate.id)); 
           cargarDatos();
           await actualizarStockGlobal();
@@ -390,6 +421,13 @@ export default function AdminPage() {
     
     await cargarDatos();
     alert(`Pedidos ${label} eliminados.`);
+  };
+
+  // NUEVO: Función para forzar la parada de cocción desde la vista Cocina (Backup)
+  const forceStopCooking = async (pizzaId: string) => {
+      if(!confirm("¿Forzar detención? Esto apagará el indicador 'En Horno' aunque haya errores.")) return;
+      await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId);
+      await cargarDatos();
   };
 
   const resetAllOrders = async () => { 
@@ -936,7 +974,7 @@ export default function AdminPage() {
         )}
 
         <main className="max-w-4xl mx-auto space-y-4 w-full">
-            {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} />}
+            {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} forceStopCooking={forceStopCooking} />}
             {/* PASAMOS openCleanModal A ORDERSVIEW */}
             {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} openCleanModal={openCleanModal} />}
             {view === 'ingredientes' && <InventoryView 
