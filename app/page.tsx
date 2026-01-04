@@ -124,7 +124,7 @@ export default function VitoPizzaApp() {
       categoria_activa: string;
       mensaje_bienvenida?: string;
       tiempo_recordatorio_minutos?: number;
-      password_invitados?: string; // Agregado para tipado
+      password_invitados?: string;
   }>({ 
       porciones_por_pizza: 4, 
       total_invitados: 10, 
@@ -243,9 +243,8 @@ export default function VitoPizzaApp() {
     }
   };
 
-  // --- FUNCIÓN DE LOGOUT ---
   const logoutGuest = () => {
-    if(confirm("¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
+    if(confirm(t.logoutConfirm || "¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
         localStorage.removeItem('vito-guest-name');
         localStorage.removeItem('vito-guest-pass-val');
         setNombreInvitado('');
@@ -300,7 +299,6 @@ export default function VitoPizzaApp() {
   }, []);
 
   // --- SUBSCRIBE TO CONFIG CHANGES (REALTIME) ---
-  // Este efecto es clave para el Punto 3
   useEffect(() => {
     const configChannel = supabase.channel('config-realtime')
       .on(
@@ -310,7 +308,6 @@ export default function VitoPizzaApp() {
             if (payload.new) {
                 setConfig(prev => ({ ...prev, ...payload.new }));
                 
-                // Si cambia la contraseña, forzar re-login
                 const newPass = payload.new.password_invitados;
                 const storedPass = localStorage.getItem('vito-guest-pass-val');
                 if (newPass && newPass !== '' && newPass !== storedPass) {
@@ -437,7 +434,15 @@ export default function VitoPizzaApp() {
   }, []);
 
   // --- MEMOS ---
-  const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas' || (Array.isArray(parsed) && parsed.length === 0)) return []; return Array.isArray(parsed) ? parsed : ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
+  // MODIFICADO: Lógica estricta para categorías. Si está vacío o es 'Todas', devolvemos un array específico.
+  const activeCategories: string[] = useMemo(() => { 
+      try { 
+          const parsed = JSON.parse(config.categoria_activa);
+          if (parsed === 'Todas') return ['Todas'];
+          if (Array.isArray(parsed)) return parsed; // Puede ser [] (vacío)
+          return ['General']; 
+      } catch { return ['General']; } 
+  }, [config.categoria_activa]);
 
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
@@ -447,7 +452,6 @@ export default function VitoPizzaApp() {
           
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // Lógica visualización stock "híbrida" (Enteras + Porciones)
           const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
           const dbStockWhole = pizza.stock || 0;
           const stockRestante = (dbStockWhole * target) + remainder; 
@@ -497,7 +501,13 @@ export default function VitoPizzaApp() {
   useEffect(() => {
     if (enrichedPizzas.length === 0) return;
     let lista = [...enrichedPizzas];
-    if (activeCategories.length > 0 && !activeCategories.includes('Todas')) { lista = lista.filter(p => activeCategories.includes(p.categoria || 'General')); }
+    
+    // MODIFICADO: Filtro Estricto de Categorías
+    if (!activeCategories.includes('Todas')) { 
+        // Si activeCategories es [], el filtro devuelve false para todo -> oculta todo. Correcto.
+        lista = lista.filter(p => activeCategories.includes(p.categoria || 'General')); 
+    }
+    
     if (filter !== 'all') { lista = lista.filter(p => { if (filter === 'top') return p.avgRating && parseFloat(p.avgRating) >= 4.5; if (filter === 'to_rate') return miHistorial[p.id]?.comidos > 0 && !misValoraciones.includes(p.id); if (filter === 'ordered') return (miHistorial[p.id]?.pendientes > 0 || miHistorial[p.id]?.comidos > 0); if (filter === 'new') return (!miHistorial[p.id]?.pendientes && !miHistorial[p.id]?.comidos); if (filter === 'stock') return p.stockRestante > 0; return true; }); }
     lista.sort((a, b) => { const aReady = !a.cocinando && a.totalPendientes >= a.target; const bReady = !b.cocinando && b.totalPendientes >= b.target; if (aReady && !bReady) return -1; if (!aReady && bReady) return 1; if (a.cocinando && !b.cocinando) return -1; if (!a.cocinando && b.cocinando) return 1; const aStock = a.stockRestante > 0; const bStock = b.stockRestante > 0; if (aStock && !bStock) return -1; if (!aStock && bStock) return 1; if (orden === 'ranking') return b.sortRating - a.sortRating; if (orden === 'nombre') return a.displayName.localeCompare(b.displayName); const aActive = a.ocupadasActual; const bActive = b.ocupadasActual; if (aActive !== bActive) return bActive - aActive; return a.displayName.localeCompare(b.displayName); });
     setOrderedIds(lista.map(p => p.id));
