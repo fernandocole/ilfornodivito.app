@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
   Palette, Sun, Moon, ArrowUpNarrowWide, ArrowDownAZ, Maximize2, Minimize2, ShieldAlert,
-  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink
+  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink, Calendar, RefreshCcw
 } from 'lucide-react';
 
 // Imports de Vistas
@@ -47,6 +47,12 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
         }
     });
     return min === Infinity ? 0 : min;
+};
+
+// Helper para formato datetime-local input
+const toLocalISOString = (date: Date) => {
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 const THEMES = [
@@ -120,6 +126,15 @@ export default function AdminPage() {
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [tempMotivos, setTempMotivos] = useState<Record<string, string>>({});
+
+  // ESTADOS LIMPIEZA AVANZADA
+  const [showCleanModal, setShowCleanModal] = useState(false);
+  const [cleanForm, setCleanForm] = useState({
+      from: '',
+      to: '',
+      status: 'all', // 'all', 'pendiente', 'cocinando', 'entregado'
+      restock: false
+  });
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -289,7 +304,6 @@ export default function AdminPage() {
   };
 
   // --- ACTIONS ---
-
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
       
@@ -327,6 +341,7 @@ export default function AdminPage() {
       }
   };
 
+  // NUEVA FUNCIÓN: Eliminar unidad por estado específico
   const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => {
       const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado);
 
@@ -459,6 +474,10 @@ export default function AdminPage() {
   const delIng = async (id: string) => { if(confirm('¿Borrar?')) await supabase.from('ingredientes').delete().eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
   const quickUpdateStock = async (id: string, current: number, add: number) => { await supabase.from('ingredientes').update({cantidad_disponible: current + add}).eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
 
+  // --- FUNCIONES RESTAURADAS ---
+  const saveBulkIngredient = async () => { if (!bulkIngId || bulkSelectedPizzas.length === 0) { alert("Selecciona ingrediente y al menos una pizza."); return; } if (bulkMode === 'SET' && Number(bulkQty) <= 0) { alert("Ingresa una cantidad válida."); return; } const actionText = bulkMode === 'REMOVE' ? 'ELIMINAR ingrediente de' : 'Aplicar cambios a'; const confirmText = `¿${actionText} ${bulkSelectedPizzas.length} items?`; if (!confirm(confirmText)) return; try { if (bulkMode === 'REMOVE') { for (const pid of bulkSelectedPizzas) { await supabase.from('recetas').delete().eq('pizza_id', pid).eq('ingrediente_id', bulkIngId); } alert("¡Ingrediente eliminado de la selección!"); } else { for (const pid of bulkSelectedPizzas) { const { data: existingRecipe } = await supabase.from('recetas').select('*').eq('pizza_id', pid).eq('ingrediente_id', bulkIngId).single(); if (existingRecipe) await supabase.from('recetas').update({ cantidad_requerida: Number(bulkQty) }).eq('id', existingRecipe.id); else await supabase.from('recetas').insert([{ pizza_id: pid, ingrediente_id: bulkIngId, cantidad_requerida: Number(bulkQty) }]); } alert("¡Aplicado correctamente!"); } setShowBulkModal(false); setBulkSelectedPizzas([]); setBulkQty(''); setBulkIngId(''); await cargarDatos(); await actualizarStockGlobal(); } catch (error: any) { alert("Error aplicando cambios masivos: " + error.message); } };
+  const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
+
   const addToNewPizzaRecipe = () => { if(!newPizzaSelectedIng) return; const [ingId, name] = newPizzaSelectedIng.split('|'); const qty = Number(newPizzaRecipeQty); if(qty <= 0) return; setNewPizzaIngredients(prev => [...prev, { ingrediente_id: ingId, nombre: name, cantidad: qty }]); setNewPizzaSelectedIng(''); setNewPizzaRecipeQty(1); };
   const removeFromNewPizzaRecipe = (idx: number) => { setNewPizzaIngredients(prev => prev.filter((_, i) => i !== idx)); };
   const addToExistingPizza = (pizzaId: string, ingId: string, name: string, qty: any, currentRecipe: any[]) => { const q = Number(qty); if(q <= 0) return; const newRecipe = [...currentRecipe, { ingrediente_id: ingId, cantidad_requerida: q, nombre: name }]; updateLocalRecipe(pizzaId, newRecipe); };
@@ -472,9 +491,81 @@ export default function AdminPage() {
   const resetU = async (nom: string) => { if(!confirm(`¿Borrar pedidos de ${nom}?`)) return; await garantizarPersistenciaUsuario(nom); const ids = pedidos.filter(p => p.invitado_nombre.toLowerCase() === nom.toLowerCase()).map(p => p.id); if(ids.length) { await supabase.from('pedidos').delete().in('id', ids); } cargarDatos(); };
   const eliminarUsuario = async (nombre: string, userDB: any) => { if(!confirm(`¿ELIMINAR a ${nombre}?`)) return; await supabase.from('pedidos').delete().eq('invitado_nombre', nombre); if(userDB?.id) await supabase.from('lista_invitados').delete().eq('id', userDB.id); else await supabase.from('lista_invitados').delete().ilike('nombre', nombre); cargarDatos(); };
 
-  const saveBulkIngredient = async () => { if (!bulkIngId || bulkSelectedPizzas.length === 0) { alert("Selecciona ingrediente y al menos una pizza."); return; } if (bulkMode === 'SET' && Number(bulkQty) <= 0) { alert("Ingresa una cantidad válida."); return; } const actionText = bulkMode === 'REMOVE' ? 'ELIMINAR ingrediente de' : 'Aplicar cambios a'; const confirmText = `¿${actionText} ${bulkSelectedPizzas.length} items?`; if (!confirm(confirmText)) return; try { if (bulkMode === 'REMOVE') { for (const pid of bulkSelectedPizzas) { await supabase.from('recetas').delete().eq('pizza_id', pid).eq('ingrediente_id', bulkIngId); } alert("¡Ingrediente eliminado de la selección!"); } else { for (const pid of bulkSelectedPizzas) { const { data: existingRecipe } = await supabase.from('recetas').select('*').eq('pizza_id', pid).eq('ingrediente_id', bulkIngId).single(); if (existingRecipe) await supabase.from('recetas').update({ cantidad_requerida: Number(bulkQty) }).eq('id', existingRecipe.id); else await supabase.from('recetas').insert([{ pizza_id: pid, ingrediente_id: bulkIngId, cantidad_requerida: Number(bulkQty) }]); } alert("¡Aplicado correctamente!"); } setShowBulkModal(false); setBulkSelectedPizzas([]); setBulkQty(''); setBulkIngId(''); await cargarDatos(); await actualizarStockGlobal(); } catch (error: any) { alert("Error aplicando cambios masivos: " + error.message); } };
-  const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
-  
+  // --- NUEVAS FUNCIONES DE LIMPIEZA AVANZADA ---
+  const openCleanModal = () => {
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      setCleanForm({
+          from: toLocalISOString(yesterday),
+          to: toLocalISOString(now),
+          status: 'all',
+          restock: false
+      });
+      setShowCleanModal(true);
+  };
+
+  const handleAdvancedClean = async () => {
+      const { from, to, status, restock } = cleanForm;
+      if (!from || !to) { alert("Define el rango de fechas."); return; }
+      
+      if(!confirm("¿Confirmar limpieza avanzada? Esta acción es irreversible.")) return;
+
+      const fromISO = new Date(from).toISOString();
+      const toISO = new Date(to).toISOString();
+
+      let query = supabase.from('pedidos').select('*').gte('created_at', fromISO).lte('created_at', toISO);
+      
+      if (status !== 'all') {
+          query = query.eq('estado', status);
+      }
+
+      const { data: toDelete, error } = await query;
+      
+      if (error || !toDelete) { alert("Error obteniendo pedidos."); return; }
+      if (toDelete.length === 0) { alert("No se encontraron pedidos en ese rango/estado."); return; }
+
+      // Restock Logic
+      if (restock) {
+          const stockDevolver: Record<string, number> = {};
+          
+          toDelete.forEach((p: any) => {
+              const pizza = pizzas.find(pz => pz.id === p.pizza_id);
+              if (pizza) {
+                  const receta = recetas.filter(r => r.pizza_id === p.pizza_id);
+                  const portions = pizza.porciones_individuales || config.porciones_por_pizza || 1;
+                  const ratio = p.cantidad_porciones / portions;
+
+                  receta.forEach(ing => {
+                      if (ing.ingrediente_id && ing.cantidad_requerida) {
+                          stockDevolver[ing.ingrediente_id] = (stockDevolver[ing.ingrediente_id] || 0) + (ing.cantidad_requerida * ratio);
+                      }
+                  });
+              }
+          });
+
+          const updates = Object.keys(stockDevolver).map(async (ingId) => {
+              const ingActual = ingredientes.find(i => i.id === ingId);
+              if (ingActual) {
+                  await supabase.from('ingredientes').update({ 
+                      cantidad_disponible: ingActual.cantidad_disponible + stockDevolver[ingId] 
+                  }).eq('id', ingId);
+              }
+          });
+          await Promise.all(updates);
+      }
+
+      // Delete Logic
+      const idsToDelete = toDelete.map((p: any) => p.id);
+      await supabase.from('pedidos').delete().in('id', idsToDelete);
+      
+      setShowCleanModal(false);
+      alert(`Se eliminaron ${idsToDelete.length} pedidos.`);
+      await cargarDatos();
+      await actualizarStockGlobal();
+  };
+
   const updateLogName = async (id: string, newName: string) => { await supabase.from('access_logs').update({ invitado_nombre: newName, is_manual_edit: true }).eq('id', id); refreshLogsOnly(); };
   const delAllVal = async () => { if(prompt("BORRAR") === 'BORRAR') { const { data } = await supabase.from('valoraciones').select('id'); const ids = data?.map(v => v.id) || []; if(ids.length) await supabase.from('valoraciones').delete().in('id', ids); cargarDatos(); } };
   const delValPizza = async (pid: string) => { if(confirm("¿Borrar todas?")) { await supabase.from('valoraciones').delete().eq('pizza_id', pid); cargarDatos(); } };
@@ -702,6 +793,83 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* --- MODAL DE LIMPIEZA AVANZADA (NUEVO) --- */}
+      {showCleanModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
+            <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-red-500">
+                        <Trash2 size={24}/> Limpieza Avanzada
+                    </h3>
+                    <button onClick={() => setShowCleanModal(false)}><X size={24} className="opacity-50 hover:opacity-100"/></button>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                    {/* FECHAS */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Desde</label>
+                            <input 
+                                type="datetime-local" 
+                                value={cleanForm.from}
+                                onChange={e => setCleanForm({...cleanForm, from: e.target.value})}
+                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Hasta</label>
+                            <input 
+                                type="datetime-local" 
+                                value={cleanForm.to}
+                                onChange={e => setCleanForm({...cleanForm, to: e.target.value})}
+                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
+                            />
+                        </div>
+                    </div>
+
+                    {/* ESTADO */}
+                    <div>
+                        <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Estado a Borrar</label>
+                        <select 
+                            value={cleanForm.status}
+                            onChange={e => setCleanForm({...cleanForm, status: e.target.value})}
+                            className={`w-full p-3 rounded-xl border outline-none ${base.input}`}
+                        >
+                            <option value="all">TODOS LOS ESTADOS</option>
+                            <option value="pendiente">Solo Pendientes (En Espera)</option>
+                            <option value="cocinando">Solo En Horno/Prep.</option>
+                            <option value="entregado">Solo Listos/Entregados</option>
+                        </select>
+                    </div>
+
+                    {/* RESTOCK CHECKBOX */}
+                    <div className="flex items-center gap-3 bg-neutral-500/10 p-3 rounded-xl border border-neutral-500/20 cursor-pointer" onClick={() => setCleanForm({...cleanForm, restock: !cleanForm.restock})}>
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${cleanForm.restock ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                            {cleanForm.restock && <CheckCircle size={14} className="text-white"/>}
+                        </div>
+                        <span className="text-sm font-bold">Reponer Stock al Inventario</span>
+                    </div>
+                    {cleanForm.restock && <p className="text-[10px] text-blue-400 opacity-80 pl-1">Se calcularán los ingredientes de los pedidos borrados y se sumarán al inventario.</p>}
+                </div>
+
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setShowCleanModal(false)}
+                        className={`flex-1 py-3 font-bold rounded-xl border ${base.buttonSec}`}
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={handleAdvancedClean}
+                        className="flex-1 py-3 font-bold rounded-xl shadow-lg transition-all active:scale-95 text-white bg-red-600 hover:bg-red-500"
+                    >
+                        ELIMINAR
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* CONTENIDO PRINCIPAL */}
       <div className="relative z-10 pt-24 px-4 pb-36">
         
@@ -728,7 +896,8 @@ export default function AdminPage() {
 
         <main className="max-w-4xl mx-auto space-y-4 w-full">
             {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} />}
-            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} />}
+            {/* PASAMOS openCleanModal A ORDERSVIEW */}
+            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} openCleanModal={openCleanModal} />}
             {view === 'ingredientes' && <InventoryView 
                 base={base} currentTheme={currentTheme} ingredients={ingredientes} 
                 newIngName={newIngName} setNewIngName={setNewIngName} 

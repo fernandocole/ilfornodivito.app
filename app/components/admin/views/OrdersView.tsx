@@ -1,43 +1,31 @@
-import { User, CheckCircle, Clock, Flame, RotateCcw, X, Trash2 } from 'lucide-react';
+import { User, CheckCircle, Clock, Flame, RotateCcw, X, Trash2, Calendar } from 'lucide-react';
 
 export const OrdersView = ({ 
-    pedidosAgrupados, base, isDarkMode, eliminarPedidosGusto, resetAllOrders, eliminarUnidad,
-    cleanOrdersByState, eliminarUnidadPorEstado // NUEVAS PROPS
+    pedidosAgrupados, base, isDarkMode, eliminarPedidosGusto, eliminarUnidad,
+    eliminarUnidadPorEstado, openCleanModal // NUEVA PROP
 }: any) => {
     
     return (
         <div className="pb-24 space-y-6">
             
-            {/* CABECERA CON BOTONES DE LIMPIEZA MASIVA (Colores corregidos) */}
-            <div className={`p-4 rounded-3xl border ${base.card} shadow-sm`}>
-                <h2 className={`text-sm font-bold uppercase tracking-wider mb-3 opacity-60 flex items-center gap-2 ${base.subtext}`}>
-                    <Trash2 size={14}/> Limpieza Masiva
-                </h2>
-                <div className="grid grid-cols-3 gap-2">
-                    <button 
-                        onClick={() => cleanOrdersByState('pendiente')}
-                        className={`flex flex-col items-center justify-center gap-1 border p-3 rounded-xl transition-all group ${isDarkMode ? 'bg-neutral-800 border-neutral-700 hover:bg-red-900/20 hover:border-red-800' : 'bg-white border-neutral-200 hover:bg-red-50 hover:border-red-200'}`}
-                    >
-                        <Clock size={20} className="text-gray-400 group-hover:text-red-500 transition-colors"/>
-                        <span className="text-[10px] font-bold text-gray-500 group-hover:text-red-500 text-center leading-tight">Limpiar<br/>En Espera</span>
-                    </button>
-
-                    <button 
-                        onClick={() => cleanOrdersByState('cocinando')}
-                        className={`flex flex-col items-center justify-center gap-1 border p-3 rounded-xl transition-all group ${isDarkMode ? 'bg-neutral-800 border-neutral-700 hover:bg-orange-900/20 hover:border-orange-800' : 'bg-white border-neutral-200 hover:bg-orange-50 hover:border-orange-200'}`}
-                    >
-                        <Flame size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors"/>
-                        <span className="text-[10px] font-bold text-gray-500 group-hover:text-orange-500 text-center leading-tight">Limpiar<br/>En Horno</span>
-                    </button>
-
-                    <button 
-                        onClick={() => cleanOrdersByState('entregado')}
-                        className={`flex flex-col items-center justify-center gap-1 border p-3 rounded-xl transition-all group ${isDarkMode ? 'bg-neutral-800 border-neutral-700 hover:bg-green-900/20 hover:border-green-800' : 'bg-white border-neutral-200 hover:bg-green-50 hover:border-green-200'}`}
-                    >
-                        <CheckCircle size={20} className="text-gray-400 group-hover:text-green-500 transition-colors"/>
-                        <span className="text-[10px] font-bold text-gray-500 group-hover:text-green-500 text-center leading-tight">Limpiar<br/>Listas</span>
-                    </button>
+            {/* CABECERA: BOTÓN DE LIMPIEZA AVANZADA (SINGLE BUTTON) */}
+            <div className={`p-4 rounded-3xl border ${base.card} shadow-sm flex items-center justify-between`}>
+                <div className="flex items-center gap-3">
+                    <div className="bg-red-500/10 p-3 rounded-xl">
+                        <Trash2 size={24} className="text-red-500"/>
+                    </div>
+                    <div>
+                        <h2 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Limpieza de Pedidos</h2>
+                        <p className={`text-xs opacity-60 ${base.subtext}`}>Borrar por fecha, estado y reponer stock</p>
+                    </div>
                 </div>
+                <button 
+                    onClick={openCleanModal}
+                    className="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 text-sm"
+                >
+                    <Calendar size={18} />
+                    ABRIR HERRAMIENTA
+                </button>
             </div>
 
             <div className="flex justify-between items-center mb-2 px-1">
@@ -68,12 +56,12 @@ export const OrdersView = ({
                                     <div key={d.id} className={`flex flex-col p-3 rounded-xl ${isDarkMode ? 'bg-black/20' : 'bg-gray-50'}`}>
                                         <div className="font-bold text-sm mb-2 flex justify-between items-center">
                                             <span>{d.nombre}</span>
-                                            {/* Botón de eliminación genérica (mantiene comportamiento anterior si se desea) */}
+                                            {/* Botón de eliminación genérica */}
                                             <button 
                                                 onClick={() => eliminarUnidad(u.nombre, d.id)}
-                                                className="text-[10px] text-red-400 underline hover:text-red-600"
+                                                className="text-[10px] text-red-400 underline hover:text-red-600 opacity-60 hover:opacity-100"
                                             >
-                                                Borrar 1 (Auto)
+                                                Borrar (Auto)
                                             </button>
                                         </div>
                                         
