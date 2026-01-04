@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { 
   CheckSquare, Square, Plus, Image as ImageIcon, UploadCloud, X, Calculator, Save, 
-  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp, Copy, ArrowDownAZ, Calendar, Filter
+  Eye, EyeOff, Trash2, Pizza, Utensils, ChevronDown, ChevronUp, Copy, ArrowDownAZ, Calendar, Filter,
+  AlertCircle, ChefHat
 } from 'lucide-react';
 import { TimeControl } from '../../ui/TimeControl';
 import { BurgerIcon } from '../../ui/BurgerIcon'; 
@@ -27,6 +28,21 @@ export const MenuView = ({
 
     const toggleExpand = (id: string) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    // Helper para detectar ingredientes faltantes
+    const getMissingIngredients = (pizzaId: string) => {
+        const recipe = recetas.filter((r: any) => r.pizza_id === pizzaId);
+        if (recipe.length === 0) return [];
+        
+        const missing: string[] = [];
+        recipe.forEach((r: any) => {
+            const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
+            if (!ing || ing.cantidad_disponible < r.cantidad_requerida) {
+                missing.push(ing ? ing.nombre : 'Ing. desconocido');
+            }
+        });
+        return missing;
     };
 
     // Lógica de filtrado y ordenamiento local
@@ -209,7 +225,7 @@ export const MenuView = ({
             {/* --- LISTA DE ITEMS (USANDO LISTA PROCESADA) --- */}
             <div className="space-y-3">
                 {processedPizzas.map((p: any) => {
-                const isEdited = !!edits[p.id];
+                const isEditing = !!edits[p.id]; // CORREGIDO: SE LLAMA isEditing AHORA
                 const isOpen = expanded[p.id]; 
                 const display = { ...p, ...edits[p.id] }; 
                 const isNewRecipe = !!edits[p.id]?.local_recipe;
@@ -219,9 +235,12 @@ export const MenuView = ({
 
                 // Usamos el stock calculado dinámicamente si tiene receta, sino el manual
                 const stockToShow = currentRecipe.length > 0 ? dynamicStock : (display.stock || 0);
+                
+                // CALCULAR INGREDIENTES FALTANTES
+                const missingIngredients = stockToShow === 0 ? getMissingIngredients(p.id) : [];
 
                 return (
-                <div key={p.id} className={`p-4 rounded-3xl border flex flex-col relative overflow-hidden transition-all ${base.card} ${isEdited ? 'border-yellow-500/50' : ''}`}>
+                <div key={p.id} className={`p-4 rounded-3xl border flex flex-col relative overflow-hidden transition-all ${base.card} ${isEditing ? 'border-yellow-500/50' : ''}`}>
                     {/* --- HEADER (Siempre visible) --- */}
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2 flex-1 mr-2 min-w-0">
@@ -238,13 +257,21 @@ export const MenuView = ({
                                 <Pizza size={20} className="text-red-500 flex-shrink-0" />
                             )}
                             
-                            {/* Input de nombre (MODIFICADO: text-base y scroll horizontal) */}
-                            <div className="flex-1 overflow-x-auto no-scrollbar">
+                            {/* Input de nombre */}
+                            <div className="flex-1 overflow-x-auto no-scrollbar flex flex-col">
                                 <input 
                                     value={display.nombre} 
                                     onChange={(e: any) => updateP(p.id, 'nombre', e.target.value)} 
                                     className="bg-transparent font-bold text-base outline-none w-full min-w-[150px] border-b border-transparent focus:border-white/20 pb-1" 
                                 />
+                                
+                                {/* ALERTA DE FALTA DE INGREDIENTES */}
+                                {missingIngredients.length > 0 && (
+                                    <span className="text-[9px] font-bold text-red-500 flex items-center gap-1 mt-1 animate-pulse">
+                                        <AlertCircle size={10} />
+                                        Falta: {missingIngredients.join(', ')}
+                                    </span>
+                                )}
                             </div>
 
                             {/* --- STOCK BADGE --- */}
@@ -255,7 +282,7 @@ export const MenuView = ({
 
                         <div className="flex gap-2 flex-shrink-0">
                             {/* BOTONES GUARDAR/CANCELAR MEJORADOS */}
-                            {isEdited ? (
+                            {isEditing ? (
                                 <>
                                     <button 
                                         onClick={() => savePizzaChanges(p.id)} 
@@ -308,13 +335,18 @@ export const MenuView = ({
                                     <span className="text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded-full">{currentRecipe.length} Ingredientes</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mb-3">
-                                    {currentRecipe.map((r: any, idx: number) => (
-                                        <span key={idx} className="text-xs bg-white dark:bg-white/10 px-2 py-1 rounded-lg flex items-center gap-1 border border-black/5 dark:border-white/5 font-medium text-black dark:text-white">
-                                            {r.nombre}: {r.cantidad_requerida}
-                                            <button onClick={() => removeFromExistingPizza(p.id, idx, currentRecipe)} className="text-red-400 hover:text-red-300 ml-1"><X size={12}/></button>
-                                        </span>
-                                    ))}
+                                    {currentRecipe.map((r: any, idx: number) => {
+                                        const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
+                                        const isMissing = ing && ing.cantidad_disponible < r.cantidad_requerida;
+                                        return (
+                                            <span key={idx} className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 border font-medium ${isMissing ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-white dark:bg-white/10 border-black/5 dark:border-white/5 text-black dark:text-white'}`}>
+                                                {r.nombre}: {r.cantidad_requerida}
+                                                {isEditing && <button onClick={() => removeFromExistingPizza(p.id, idx, currentRecipe)} className="text-red-400 hover:text-red-300 ml-1"><X size={12}/></button>}
+                                            </span>
+                                        );
+                                    })}
                                 </div>
+                                {isEditing && (
                                 <div className="flex gap-2">
                                     <select className={`flex-1 w-0 min-w-0 p-1.5 text-xs rounded-lg font-bold outline-none bg-white dark:bg-black/20 text-black dark:text-white`} value={tempRecipeIng[p.id] || ''} onChange={(e: any) => setTempRecipeIng({...tempRecipeIng, [p.id]: e.target.value})}>
                                         <option value="">+ Ingrediente</option>
@@ -329,6 +361,7 @@ export const MenuView = ({
                                         setTempRecipeQty({...tempRecipeQty, [p.id]: ''});
                                     }} className="bg-neutral-800 dark:bg-white text-white dark:text-black px-3 rounded-lg text-xs font-bold flex-shrink-0">OK</button>
                                 </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
