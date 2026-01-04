@@ -474,6 +474,10 @@ export default function AdminPage() {
   const delIng = async (id: string) => { if(confirm('¿Borrar?')) await supabase.from('ingredientes').delete().eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
   const quickUpdateStock = async (id: string, current: number, add: number) => { await supabase.from('ingredientes').update({cantidad_disponible: current + add}).eq('id', id); await actualizarStockGlobal(); cargarDatos(); };
 
+  // --- FUNCIONES RESTAURADAS PARA EDICIÓN MASIVA ---
+  const saveBulkIngredient = async () => { if (!bulkIngId || bulkSelectedPizzas.length === 0) { alert("Selecciona ingrediente y al menos una pizza."); return; } if (bulkMode === 'SET' && Number(bulkQty) <= 0) { alert("Ingresa una cantidad válida."); return; } const actionText = bulkMode === 'REMOVE' ? 'ELIMINAR ingrediente de' : 'Aplicar cambios a'; const confirmText = `¿${actionText} ${bulkSelectedPizzas.length} items?`; if (!confirm(confirmText)) return; try { if (bulkMode === 'REMOVE') { for (const pid of bulkSelectedPizzas) { await supabase.from('recetas').delete().eq('pizza_id', pid).eq('ingrediente_id', bulkIngId); } alert("¡Ingrediente eliminado de la selección!"); } else { for (const pid of bulkSelectedPizzas) { const { data: existingRecipe } = await supabase.from('recetas').select('*').eq('pizza_id', pid).eq('ingrediente_id', bulkIngId).single(); if (existingRecipe) await supabase.from('recetas').update({ cantidad_requerida: Number(bulkQty) }).eq('id', existingRecipe.id); else await supabase.from('recetas').insert([{ pizza_id: pid, ingrediente_id: bulkIngId, cantidad_requerida: Number(bulkQty) }]); } alert("¡Aplicado correctamente!"); } setShowBulkModal(false); setBulkSelectedPizzas([]); setBulkQty(''); setBulkIngId(''); await cargarDatos(); await actualizarStockGlobal(); } catch (error: any) { alert("Error aplicando cambios masivos: " + error.message); } };
+  const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
+
   // --- MODIFICADO: Sumar cantidad si ya existe el ingrediente ---
   const addToNewPizzaRecipe = () => { 
       if(!newPizzaSelectedIng) return; 
@@ -741,6 +745,83 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* --- MODAL DE LIMPIEZA AVANZADA (NUEVO) --- */}
+      {showCleanModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
+            <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-red-500">
+                        <Trash2 size={24}/> Limpieza Avanzada
+                    </h3>
+                    <button onClick={() => setShowCleanModal(false)}><X size={24} className="opacity-50 hover:opacity-100"/></button>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                    {/* FECHAS */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Desde</label>
+                            <input 
+                                type="datetime-local" 
+                                value={cleanForm.from}
+                                onChange={e => setCleanForm({...cleanForm, from: e.target.value})}
+                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Hasta</label>
+                            <input 
+                                type="datetime-local" 
+                                value={cleanForm.to}
+                                onChange={e => setCleanForm({...cleanForm, to: e.target.value})}
+                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
+                            />
+                        </div>
+                    </div>
+
+                    {/* ESTADO */}
+                    <div>
+                        <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Estado a Borrar</label>
+                        <select 
+                            value={cleanForm.status}
+                            onChange={e => setCleanForm({...cleanForm, status: e.target.value})}
+                            className={`w-full p-3 rounded-xl border outline-none ${base.input}`}
+                        >
+                            <option value="all">TODOS LOS ESTADOS</option>
+                            <option value="pendiente">Solo Pendientes (En Espera)</option>
+                            <option value="cocinando">Solo En Horno/Prep.</option>
+                            <option value="entregado">Solo Listos/Entregados</option>
+                        </select>
+                    </div>
+
+                    {/* RESTOCK CHECKBOX */}
+                    <div className="flex items-center gap-3 bg-neutral-500/10 p-3 rounded-xl border border-neutral-500/20 cursor-pointer" onClick={() => setCleanForm({...cleanForm, restock: !cleanForm.restock})}>
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${cleanForm.restock ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                            {cleanForm.restock && <CheckCircle size={14} className="text-white"/>}
+                        </div>
+                        <span className="text-sm font-bold">Reponer Stock al Inventario</span>
+                    </div>
+                    {cleanForm.restock && <p className="text-[10px] text-blue-400 opacity-80 pl-1">Se calcularán los ingredientes de los pedidos borrados y se sumarán al inventario.</p>}
+                </div>
+
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setShowCleanModal(false)}
+                        className={`flex-1 py-3 font-bold rounded-xl border ${base.buttonSec}`}
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={handleAdvancedClean}
+                        className="flex-1 py-3 font-bold rounded-xl shadow-lg transition-all active:scale-95 text-white bg-red-600 hover:bg-red-500"
+                    >
+                        ELIMINAR
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* --- MODAL DE EDICIÓN MASIVA --- */}
       {showBulkModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowBulkModal(false)}>
@@ -826,83 +907,6 @@ export default function AdminPage() {
                 >
                     {bulkMode === 'SET' ? 'APLICAR CAMBIOS' : 'ELIMINAR SELECCIÓN'}
                 </button>
-            </div>
-        </div>
-      )}
-
-      {/* --- MODAL DE LIMPIEZA AVANZADA (NUEVO) --- */}
-      {showCleanModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
-            <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold flex items-center gap-2 text-red-500">
-                        <Trash2 size={24}/> Limpieza Avanzada
-                    </h3>
-                    <button onClick={() => setShowCleanModal(false)}><X size={24} className="opacity-50 hover:opacity-100"/></button>
-                </div>
-
-                <div className="space-y-4 mb-6">
-                    {/* FECHAS */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Desde</label>
-                            <input 
-                                type="datetime-local" 
-                                value={cleanForm.from}
-                                onChange={e => setCleanForm({...cleanForm, from: e.target.value})}
-                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Hasta</label>
-                            <input 
-                                type="datetime-local" 
-                                value={cleanForm.to}
-                                onChange={e => setCleanForm({...cleanForm, to: e.target.value})}
-                                className={`w-full p-3 rounded-xl border outline-none text-xs ${base.input}`}
-                            />
-                        </div>
-                    </div>
-
-                    {/* ESTADO */}
-                    <div>
-                        <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Estado a Borrar</label>
-                        <select 
-                            value={cleanForm.status}
-                            onChange={e => setCleanForm({...cleanForm, status: e.target.value})}
-                            className={`w-full p-3 rounded-xl border outline-none ${base.input}`}
-                        >
-                            <option value="all">TODOS LOS ESTADOS</option>
-                            <option value="pendiente">Solo Pendientes (En Espera)</option>
-                            <option value="cocinando">Solo En Horno/Prep.</option>
-                            <option value="entregado">Solo Listos/Entregados</option>
-                        </select>
-                    </div>
-
-                    {/* RESTOCK CHECKBOX */}
-                    <div className="flex items-center gap-3 bg-neutral-500/10 p-3 rounded-xl border border-neutral-500/20 cursor-pointer" onClick={() => setCleanForm({...cleanForm, restock: !cleanForm.restock})}>
-                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${cleanForm.restock ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
-                            {cleanForm.restock && <CheckCircle size={14} className="text-white"/>}
-                        </div>
-                        <span className="text-sm font-bold">Reponer Stock al Inventario</span>
-                    </div>
-                    {cleanForm.restock && <p className="text-[10px] text-blue-400 opacity-80 pl-1">Se calcularán los ingredientes de los pedidos borrados y se sumarán al inventario.</p>}
-                </div>
-
-                <div className="flex gap-3">
-                    <button 
-                        onClick={() => setShowCleanModal(false)}
-                        className={`flex-1 py-3 font-bold rounded-xl border ${base.buttonSec}`}
-                    >
-                        Cancelar
-                    </button>
-                    <button 
-                        onClick={handleAdvancedClean}
-                        className="flex-1 py-3 font-bold rounded-xl shadow-lg transition-all active:scale-95 text-white bg-red-600 hover:bg-red-500"
-                    >
-                        ELIMINAR
-                    </button>
-                </div>
             </div>
         </div>
       )}
