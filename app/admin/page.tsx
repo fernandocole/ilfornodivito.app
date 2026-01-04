@@ -288,8 +288,25 @@ export default function AdminPage() {
     if(inv.data) setInvitadosDB(inv.data); if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) actualizarStockGlobal();
   };
 
-  // --- ACTIONS ---
+  // --- ACTIONS (NUEVO: Función de limpieza por estado) ---
+  const cleanOrdersByState = async (status: 'pendiente' | 'cocinando' | 'entregado') => {
+    const label = status === 'pendiente' ? 'EN ESPERA' : status === 'cocinando' ? 'EN PREPARACIÓN' : 'LISTAS/ENTREGADAS';
+    if (!confirm(`¿Estás seguro de BORRAR todos los pedidos ${label}?`)) return;
+    
+    // Delete from DB
+    await supabase.from('pedidos').delete().eq('estado', status);
+    
+    // Special handling for 'cocinando' to reset pizza flags
+    if (status === 'cocinando') {
+        // Reset cooking status for all pizzas
+        await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    
+    await cargarDatos();
+    alert(`Pedidos ${label} eliminados.`);
+  };
 
+  // ... (Resto de las acciones existentes: eliminarUnidad, duplicateP, updateP, etc.)
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
       
@@ -631,7 +648,8 @@ export default function AdminPage() {
 
         <main className="max-w-4xl mx-auto space-y-4 w-full">
             {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} />}
-            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} />}
+            {/* AQUÍ SE PASA LA NUEVA PROP cleanOrdersByState */}
+            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} cleanOrdersByState={cleanOrdersByState} />}
             {view === 'ingredientes' && <InventoryView 
                 base={base} currentTheme={currentTheme} ingredients={ingredientes} 
                 newIngName={newIngName} setNewIngName={setNewIngName} 
