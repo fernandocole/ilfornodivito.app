@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Flame, Clock, CheckCircle, ChefHat, UtensilsCrossed, Zap } from 'lucide-react';
+import { Flame, Clock, CheckCircle, ChefHat, UtensilsCrossed, Zap, AlertTriangle, XCircle } from 'lucide-react';
 import { CookingTimer } from '../../ui/CookingTimer';
 
 export const KitchenView = ({ 
-    metricas, base, isCompact, isDarkMode, currentTheme, toggleCocinando, entregar 
+    metricas, base, isCompact, isDarkMode, currentTheme, toggleCocinando, entregar, forceStopCooking 
 }: any) => {
     
     const [filter, setFilter] = useState<'all' | 'with_orders' | 'pending' | 'cooking' | 'ready'>('with_orders');
@@ -72,8 +72,11 @@ export const KitchenView = ({
                         
                         const config = getStatusConfig(p);
 
+                        // --- LÓGICA ZOMBIE (Error de estado) ---
+                        const isZombie = p.cocinando && p.enHorno === 0;
+
                         return (
-                            <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'border-red-600/30 shadow-md' : ''} ${isCompact ? 'p-3' : 'p-5'}`}>
+                            <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? (isZombie ? 'border-red-500/50' : 'border-red-600/30 shadow-md') : ''} ${isCompact ? 'p-3' : 'p-5'}`}>
                                 
                                 <div className="flex justify-between items-start mb-3 relative z-10">
                                     <div className="flex-1 min-w-0 pr-2">
@@ -88,7 +91,7 @@ export const KitchenView = ({
                                                 </span>
                                             )}
 
-                                            {p.cocinando && p.cocinando_inicio && (
+                                            {p.cocinando && p.cocinando_inicio && !isZombie && (
                                                 <div className="scale-90 origin-left">
                                                     <CookingTimer start={p.cocinando_inicio} duration={p.tiempo_coccion || 60} />
                                                 </div>
@@ -120,69 +123,90 @@ export const KitchenView = ({
                                     </div>
                                 </div>
 
-                                {/* BARRA PROGRESO */}
-                                <div className={`relative ${isDarkMode ? 'bg-black' : 'bg-gray-300'} rounded-full overflow-hidden z-10 mb-4 ${isCompact ? 'h-1.5' : 'h-2.5'}`}>
-                                    <div className="absolute inset-0 flex justify-between px-[1px] z-20">
-                                        {[...Array(p.target)].map((_, i) => <div key={i} className={`w-[1px] h-full ${isDarkMode ? 'bg-white/10' : 'bg-white/50'}`}></div>)}
+                                {/* --- CONDICIONAL: ZOMBIE vs NORMAL --- */}
+                                {isZombie ? (
+                                    // UI DE ERROR (Estado Zombie)
+                                    <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-3 flex items-center justify-between animate-pulse mt-2">
+                                        <div className="flex items-center gap-2 text-red-500">
+                                            <AlertTriangle size={20} />
+                                            <div className="leading-tight">
+                                                <span className="block text-xs font-bold">Error de Estado</span>
+                                                <span className="text-[10px]">Figura cocinando (0).</span>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => forceStopCooking(p.id)}
+                                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg flex items-center gap-1"
+                                        >
+                                            <XCircle size={14} /> DETENER
+                                        </button>
                                     </div>
-                                    <div className={`absolute h-full ${p.cocinando ? config.color : currentTheme.color} transition-all duration-700`} style={{ width: `${p.percent}%` }}></div>
-                                </div>
-
-                                <div className="flex gap-2 items-center">
-                                    
-                                    {/* IZQUIERDA: MOVER AL HORNO */}
-                                    {p.enEspera > 0 ? (
-                                        <div className="flex-1 flex gap-2">
-                                            {/* BOTÓN 1 UNIDAD AL HORNO (Estilo Corregido) */}
-                                            <button onClick={() => toggleCocinando(p, 'una')} className={singleActionBtnClass}>
-                                                {config.icon} 1
-                                            </button>
-                                            
-                                            {p.enEspera > 1 && (
-                                                <button onClick={() => toggleCocinando(p, 'todas')} className={`flex-[1.5] ${config.color} text-white text-[10px] font-bold rounded-xl flex items-center justify-center gap-1 py-3 shadow-lg active:scale-95`}>
-                                                    {config.icon} ¡Todos!
-                                                </button>
-                                            )}
+                                ) : (
+                                    // UI NORMAL (Barra + Botones)
+                                    <>
+                                        {/* BARRA PROGRESO */}
+                                        <div className={`relative ${isDarkMode ? 'bg-black' : 'bg-gray-300'} rounded-full overflow-hidden z-10 mb-4 ${isCompact ? 'h-1.5' : 'h-2.5'}`}>
+                                            <div className="absolute inset-0 flex justify-between px-[1px] z-20">
+                                                {[...Array(p.target)].map((_, i) => <div key={i} className={`w-[1px] h-full ${isDarkMode ? 'bg-white/10' : 'bg-white/50'}`}></div>)}
+                                            </div>
+                                            <div className={`absolute h-full ${p.cocinando ? config.color : currentTheme.color} transition-all duration-700`} style={{ width: `${p.percent}%` }}></div>
                                         </div>
-                                    ) : (
-                                        <div className={`flex-1 text-center text-[10px] py-3 opacity-40 font-bold border rounded-xl border-dashed ${isDarkMode ? 'border-neutral-700' : 'border-gray-300'}`}>
-                                            Nada en espera
-                                        </div>
-                                    )}
 
-                                    {/* DERECHA: ENTREGAR */}
-                                    {p.enHorno > 0 || p.enEspera > 0 ? (
-                                        <>
-                                            <div className="w-[1px] bg-gray-300 dark:bg-neutral-700 h-8 mx-1"></div>
+                                        <div className="flex gap-2 items-center">
                                             
-                                            <div className="flex-[1.5] flex gap-2">
-                                                {p.enHorno > 0 ? (
-                                                    <>
-                                                        {/* BOTÓN 1 UNIDAD LISTA (Estilo Corregido) */}
-                                                        <button onClick={() => entregar(p, 'una', false)} className={singleActionBtnClass}>
-                                                            <CheckCircle size={14} /> <span>1 Listo</span>
+                                            {/* IZQUIERDA: MOVER AL HORNO */}
+                                            {p.enEspera > 0 ? (
+                                                <div className="flex-1 flex gap-2">
+                                                    <button onClick={() => toggleCocinando(p, 'una')} className={singleActionBtnClass}>
+                                                        {config.icon} 1
+                                                    </button>
+                                                    
+                                                    {p.enEspera > 1 && (
+                                                        <button onClick={() => toggleCocinando(p, 'todas')} className={`flex-[1.5] ${config.color} text-white text-[10px] font-bold rounded-xl flex items-center justify-center gap-1 py-3 shadow-lg active:scale-95`}>
+                                                            {config.icon} ¡Todos!
                                                         </button>
-                                                        
-                                                        {p.enHorno > 1 && (
-                                                            <button onClick={() => entregar(p, 'todas', false)} className={`flex-1 ${currentTheme.color} text-white text-[10px] font-bold rounded-xl flex flex-col leading-none items-center justify-center gap-1 py-2 shadow-lg active:scale-95`}>
-                                                                <CheckCircle size={14} /> <span>Todos</span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className={`flex-1 text-center text-[10px] py-3 opacity-40 font-bold border rounded-xl border-dashed ${isDarkMode ? 'border-neutral-700' : 'border-gray-300'}`}>
+                                                    Nada en espera
+                                                </div>
+                                            )}
+
+                                            {/* DERECHA: ENTREGAR */}
+                                            {p.enHorno > 0 || p.enEspera > 0 ? (
+                                                <>
+                                                    <div className="w-[1px] bg-gray-300 dark:bg-neutral-700 h-8 mx-1"></div>
+                                                    
+                                                    <div className="flex-[1.5] flex gap-2">
+                                                        {p.enHorno > 0 ? (
+                                                            <>
+                                                                <button onClick={() => entregar(p, 'una', false)} className={singleActionBtnClass}>
+                                                                    <CheckCircle size={14} /> <span>1 Listo</span>
+                                                                </button>
+                                                                
+                                                                {p.enHorno > 1 && (
+                                                                    <button onClick={() => entregar(p, 'todas', false)} className={`flex-1 ${currentTheme.color} text-white text-[10px] font-bold rounded-xl flex flex-col leading-none items-center justify-center gap-1 py-2 shadow-lg active:scale-95`}>
+                                                                        <CheckCircle size={14} /> <span>Todos</span>
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex-1"></div>
+                                                        )}
+
+                                                        {/* Botón Emergencia */}
+                                                        {p.enEspera > 0 && (
+                                                            <button onClick={() => entregar(p, 'una', true)} className={`w-8 bg-yellow-500 text-black font-bold rounded-xl flex items-center justify-center shadow-lg active:scale-95`} title="Entregar directo (Emergencia)">
+                                                                <Zap size={14} />
                                                             </button>
                                                         )}
-                                                    </>
-                                                ) : (
-                                                    <div className="flex-1"></div>
-                                                )}
-
-                                                {/* Botón Emergencia */}
-                                                {p.enEspera > 0 && (
-                                                    <button onClick={() => entregar(p, 'una', true)} className={`w-8 bg-yellow-500 text-black font-bold rounded-xl flex items-center justify-center shadow-lg active:scale-95`} title="Entregar directo (Emergencia)">
-                                                        <Zap size={14} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : null}
-                                </div>
+                                                    </div>
+                                                </>
+                                            ) : null}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         );
                     })
