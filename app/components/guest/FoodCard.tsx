@@ -30,7 +30,7 @@ export const FoodCard = ({
     
     const hist = miHistorial[pizza.id];
     // Desglose de estados
-    const pendientes = hist?.pendientes || 0; // Total (suma de espera + horno)
+    const pendientes = hist?.pendientes || 0; 
     const enHornoCount = hist?.enHorno || 0;  
     const enEsperaCount = hist?.enEspera || 0;
     const comidos = hist?.comidos || 0;
@@ -45,11 +45,16 @@ export const FoodCard = ({
     
     const cookingColor = isUnit ? 'bg-orange-500' : 'bg-red-600';
     const cookingIcon = isUnit ? <ChefHat size={10} fill="white"/> : <Flame size={10} fill="white"/>;
+    
+    // --- LÓGICA DE MENSAJE "FALTA INGREDIENTE" ---
+    const missingText = (pizza.missingIngredients && pizza.missingIngredients.length > 0)
+        ? `Falta: ${pizza.missingIngredients.join(', ')}`
+        : t.soldOut;
 
     return (
         <div className={`${base.card} ${isCompact ? 'rounded-3xl' : 'rounded-[36px]'} border ${pizza.stockRestante === 0 ? 'border-neutral-200 dark:border-neutral-800' : pizza.cocinando ? `${isUnit ? 'border-orange-500/50 ring-1 ring-orange-500/20' : 'border-red-600/50 ring-1 ring-red-500/20'}` : ''} shadow-lg relative overflow-hidden group ${isCompact ? 'p-3' : 'p-5'} transition-all duration-300`}>
             
-            {/* IMAGEN GRANDE ARRIBA (Diseño Clásico) */}
+            {/* IMAGEN GRANDE ARRIBA */}
             {!isCompact && pizza.imagen_url && (
                 <div 
                     className="mb-4 w-full h-44 rounded-2xl overflow-hidden relative cursor-pointer group-hover:shadow-md transition-all" 
@@ -71,7 +76,7 @@ export const FoodCard = ({
                     {/* CABECERA */}
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                         
-                        {/* Miniatura en modo compacto */}
+                        {/* Miniatura */}
                         {isCompact && pizza.imagen_url && (
                             <img 
                                 src={pizza.imagen_url} 
@@ -80,7 +85,7 @@ export const FoodCard = ({
                             />
                         )}
 
-                        {/* ICONO DEL TIPO DE COMIDA (Solo si NO hay imagen) */}
+                        {/* ICONO */}
                         {!pizza.imagen_url && (
                             isBurger ? (
                                 <BurgerIcon className={`text-orange-500 ${isCompact ? 'w-4 h-4' : 'w-5 h-5'}`} /> 
@@ -105,7 +110,7 @@ export const FoodCard = ({
                             )}
                         </div>
 
-                        {/* --- BADGE: EN ESPERA (NUEVO) --- */}
+                        {/* --- BADGE: EN ESPERA --- */}
                         {enEsperaCount > 0 && (
                             <span className={`text-[10px] bg-neutral-500 text-white px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-white/10`}>
                                 <Clock size={10} className="text-white" /> En Espera ({enEsperaCount})
@@ -127,26 +132,21 @@ export const FoodCard = ({
                         </p>
                     )}
                     
-                    {/* Stock Text */}
+                    {/* Stock Text: AHORA MUESTRA EL DESGLOSE REAL */}
                     <p className={`font-mono mt-1 ${pizza.stockRestante === 0 ? 'text-red-500 font-bold' : base.subtext} ${STOCK_SIZES[zoomLevel]}`}>
-                        {pizza.stockRestante === 0 ? t.soldOut : (
+                        {pizza.stockRestante === 0 ? (
+                            // Muestra "Falta: Mozzarella" o "Agotado"
+                            missingText
+                        ) : (
                             isUnit 
                             ? `${t.stockLabel} ${pizza.stockRestante} ${t.units}` 
-                            : `${t.ingredientsFor} ${pizza.stockRestante} ${t.portionsMore}`
+                            : `${pizza.dbStockWhole} ${t.pizzas} + ${pizza.remainder} ${t.portions}` 
                         )}
                     </p>
                 </div>
                 
-                {/* Badges de Usuario (Pedidos Totales / Comidos) */}
+                {/* Badges de Usuario (Comidos) */}
                 <div className="flex flex-col items-end gap-1 ml-2">
-                    {/* Nota: 'pendientes' es la suma de Espera + Horno. 
-                        Podemos dejarlo como "Pediste X" (Total) o quitarlo si los badges de arriba son suficientes.
-                        Lo mantengo para que el usuario sepa el total de su orden activa. */}
-                    {pendientes > 0 && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${isDarkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-neutral-800 border-neutral-800 text-white'}`}>
-                            {t.youOrdered} {pendientes}
-                        </span>
-                    )}
                     {comidos > 0 && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${isDarkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-neutral-800 border-neutral-800 text-white'}`}>
                             {t.youAte} {comidos}

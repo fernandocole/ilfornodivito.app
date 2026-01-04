@@ -70,6 +70,11 @@ export default function VitoPizzaApp() {
 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [pedidos, setPedidos] = useState<any[]>([]); 
+  
+  // NUEVO: Estados para calcular faltantes
+  const [ingredientes, setIngredientes] = useState<any[]>([]);
+  const [recetas, setRecetas] = useState<any[]>([]);
+
   const [allRatings, setAllRatings] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [nombreInvitado, setNombreInvitado] = useState('');
@@ -243,7 +248,7 @@ export default function VitoPizzaApp() {
     }
   };
 
-  // --- FUNCIÓN DE LOGOUT CORREGIDA ---
+  // --- FUNCIÓN DE LOGOUT ---
   const logoutGuest = () => {
     if(confirm("¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
         localStorage.removeItem('vito-guest-name');
@@ -252,6 +257,13 @@ export default function VitoPizzaApp() {
         setFlowStep('landing');
     }
   };
+
+  // --- FUNCIONES DE ONBOARDING (RESTAURADAS) ---
+  const checkOnboarding = () => { const seen = localStorage.getItem('vito-onboarding-seen'); if (!seen) { setFlowStep('onboarding'); setShowOnboarding(true); } else { setFlowStep('app'); } };
+  const handleNameSubmit = () => { if (!nombreInvitado.trim()) return alert("Por favor ingresa tu nombre"); localStorage.setItem('vito-guest-name', nombreInvitado); if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); } };
+  const handlePasswordSubmit = () => { if (guestPassInput === dbPass) { localStorage.setItem('vito-guest-pass-val', guestPassInput); checkOnboarding(); } else { alert("Contraseña incorrecta"); } };
+  const handleInstallClick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') setIsInstallable(false); setDeferredPrompt(null); };
+  const completeOnboarding = () => { localStorage.setItem('vito-onboarding-seen', 'true'); setShowOnboarding(false); setFlowStep('app'); };
 
   // --- EFECTOS DE CARGA ---
   useEffect(() => {
@@ -309,7 +321,6 @@ export default function VitoPizzaApp() {
             if (payload.new) {
                 setConfig(prev => ({ ...prev, ...payload.new }));
                 
-                // Si cambia la contraseña, forzar re-login
                 const newPass = payload.new.password_invitados;
                 const storedPass = localStorage.getItem('vito-guest-pass-val');
                 if (newPass && newPass !== '' && newPass !== storedPass) {
@@ -363,13 +374,6 @@ export default function VitoPizzaApp() {
       translateAll();
   }, [lang, pizzas, autoTranslations, config.mensaje_bienvenida]);
 
-  // --- LOGICA FLUJO DE ACCESO ---
-  const checkOnboarding = () => { const seen = localStorage.getItem('vito-onboarding-seen'); if (!seen) { setFlowStep('onboarding'); setShowOnboarding(true); } else { setFlowStep('app'); } };
-  const handleNameSubmit = () => { if (!nombreInvitado.trim()) return alert("Por favor ingresa tu nombre"); localStorage.setItem('vito-guest-name', nombreInvitado); if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); } };
-  const handlePasswordSubmit = () => { if (guestPassInput === dbPass) { localStorage.setItem('vito-guest-pass-val', guestPassInput); checkOnboarding(); } else { alert("Contraseña incorrecta"); } };
-  const handleInstallClick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') setIsInstallable(false); setDeferredPrompt(null); };
-  const completeOnboarding = () => { localStorage.setItem('vito-onboarding-seen', 'true'); setShowOnboarding(false); setFlowStep('app'); };
-
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from('configuracion_dia').select('*').single();
     if (data) { setConfig(data); setDbPass(data.password_invitados || ''); }
@@ -383,20 +387,30 @@ export default function VitoPizzaApp() {
   // --- FETCH DATOS ---
   const fetchDatos = useCallback(async () => {
     const now = new Date(); const corte = new Date(now); if (now.getHours() < 6) corte.setDate(corte.getDate() - 1); corte.setHours(6, 0, 0, 0); const iso = corte.toISOString();
-    const { data: dPed } = await supabase.from('pedidos').select('*').gte('created_at', iso);
-    const { data: dPiz } = await supabase.from('menu_pizzas').select('*').eq('activa', true).order('created_at');
-    const { data: dInv } = await supabase.from('lista_invitados').select('*');
-    const { data: dVal } = await supabase.from('valoraciones').select('*').gte('created_at', iso); 
-    if (dVal) setAllRatings(dVal);
-    if (dInv) { setInvitadosLista(dInv); const u = dInv.find(u => u.nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (u?.bloqueado) { setUsuarioBloqueado(true); setMotivoBloqueo(u.motivo_bloqueo || ''); } else { setUsuarioBloqueado(false); setMotivoBloqueo(''); } }
-    if (dPiz && dPed) {
-      setPedidos(dPed); setInvitadosActivos(new Set(dPed.map(p => p.invitado_nombre.toLowerCase().trim())).size); setPizzas(dPiz);
+    
+    // NEW: Fetch ingredientes y recetas
+    const [dPed, dPiz, dInv, dVal, dRec, dIng] = await Promise.all([
+        supabase.from('pedidos').select('*').gte('created_at', iso),
+        supabase.from('menu_pizzas').select('*').eq('activa', true).order('created_at'),
+        supabase.from('lista_invitados').select('*'),
+        supabase.from('valoraciones').select('*').gte('created_at', iso),
+        supabase.from('recetas').select('*'),
+        supabase.from('ingredientes').select('*')
+    ]);
+
+    if (dIng.data) setIngredientes(dIng.data);
+    if (dRec.data) setRecetas(dRec.data);
+
+    if (dVal.data) setAllRatings(dVal.data);
+    if (dInv.data) { setInvitadosLista(dInv.data); const u = dInv.data.find(u => u.nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (u?.bloqueado) { setUsuarioBloqueado(true); setMotivoBloqueo(u.motivo_bloqueo || ''); } else { setUsuarioBloqueado(false); setMotivoBloqueo(''); } }
+    if (dPiz.data && dPed.data) {
+      setPedidos(dPed.data); setInvitadosActivos(new Set(dPed.data.map(p => p.invitado_nombre.toLowerCase().trim())).size); setPizzas(dPiz.data);
       if (nombreInvitado) {
-        const mV = dVal?.filter(v => v.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (mV) setMisValoraciones(mV.map(v => v.pizza_id));
-        const mis = dPed.filter(p => p.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim());
+        const mV = dVal.data?.filter(v => v.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (mV) setMisValoraciones(mV.map(v => v.pizza_id));
+        const mis = dPed.data.filter(p => p.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim());
         const res: any = {}; const penInfo: Record<string, number> = {}; 
         
-        dPiz.forEach(pz => {
+        dPiz.data.forEach(pz => {
              const m = mis.filter(p => p.pizza_id === pz.id); 
              const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); 
              
@@ -421,26 +435,12 @@ export default function VitoPizzaApp() {
   }, [nombreInvitado, flowStep, t]); 
   useEffect(() => { fetchDatos(); const c = supabase.channel('app-realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => fetchDatos()).subscribe(); return () => { supabase.removeChannel(c); }; }, [fetchDatos]);
 
-  // --- CHECK DE SEGURIDAD (PASS UPDATE) ---
-  useEffect(() => {
-    const checkSecurity = supabase.channel('security-check')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_dia' }, (payload: any) => {
-            const newPass = payload.new.password_invitados;
-            const storedPass = localStorage.getItem('vito-guest-pass-val');
-            if (newPass && newPass !== '' && newPass !== storedPass) {
-                alert("La contraseña de acceso ha cambiado. Por favor ingresa nuevamente.");
-                setFlowStep('password'); setGuestPassInput(''); setDbPass(newPass);
-            }
-        }).subscribe();
-    return () => { supabase.removeChannel(checkSecurity); };
-  }, []);
-
   // --- MEMOS ---
   const activeCategories: string[] = useMemo(() => { 
       try { 
           const parsed = JSON.parse(config.categoria_activa);
           if (parsed === 'Todas') return ['Todas'];
-          if (Array.isArray(parsed)) return parsed; // Puede ser [] (vacío)
+          if (Array.isArray(parsed)) return parsed;
           return ['General']; 
       } catch { return ['General']; } 
   }, [config.categoria_activa]);
@@ -456,6 +456,17 @@ export default function VitoPizzaApp() {
           const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
           const dbStockWhole = pizza.stock || 0;
           const stockRestante = (dbStockWhole * target) + remainder; 
+
+          let missingIngredients: string[] = [];
+          if (stockRestante <= 0 && recetas.length > 0 && ingredientes.length > 0) {
+              const myRecipe = recetas.filter(r => r.pizza_id === pizza.id);
+              myRecipe.forEach(r => {
+                 const ing = ingredientes.find(i => i.id === r.ingrediente_id);
+                 if (ing && ing.cantidad_disponible < r.cantidad_requerida) {
+                     missingIngredients.push(ing.nombre);
+                 }
+              });
+          }
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
@@ -476,6 +487,7 @@ export default function VitoPizzaApp() {
               stockRestante,
               dbStockWhole, 
               remainder, 
+              missingIngredients, 
               target, 
               ocupadasActual: pen % target, 
               faltanParaCompletar: target - (pen % target), 
@@ -485,7 +497,7 @@ export default function VitoPizzaApp() {
               totalPendientes: pen 
           }; 
       }); 
-  }, [pizzas, pedidos, config, allRatings, lang, autoTranslations]);
+  }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes]);
 
   const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.enEspera > 0; if(summarySheet === 'oven') return h.enHorno > 0; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.enEspera; else if(summarySheet === 'oven') count = h.enHorno; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
   
@@ -503,9 +515,7 @@ export default function VitoPizzaApp() {
     if (enrichedPizzas.length === 0) return;
     let lista = [...enrichedPizzas];
     
-    // MODIFICADO: Filtro Estricto de Categorías
     if (!activeCategories.includes('Todas')) { 
-        // Si activeCategories es [], el filtro devuelve false para todo -> oculta todo. Correcto.
         lista = lista.filter(p => activeCategories.includes(p.categoria || 'General')); 
     }
     
