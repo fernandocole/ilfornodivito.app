@@ -124,6 +124,7 @@ export default function VitoPizzaApp() {
       categoria_activa: string;
       mensaje_bienvenida?: string;
       tiempo_recordatorio_minutos?: number;
+      password_invitados?: string; // Agregado para tipado
   }>({ 
       porciones_por_pizza: 4, 
       total_invitados: 10, 
@@ -242,7 +243,7 @@ export default function VitoPizzaApp() {
     }
   };
 
-  // --- FUNCIÓN DE LOGOUT (NUEVA) ---
+  // --- FUNCIÓN DE LOGOUT ---
   const logoutGuest = () => {
     if(confirm("¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
         localStorage.removeItem('vito-guest-name');
@@ -296,6 +297,32 @@ export default function VitoPizzaApp() {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         supabase.removeChannel(presenceChannel);
     };
+  }, []);
+
+  // --- SUBSCRIBE TO CONFIG CHANGES (REALTIME) ---
+  // Este efecto es clave para el Punto 3
+  useEffect(() => {
+    const configChannel = supabase.channel('config-realtime')
+      .on(
+        'postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'configuracion_dia' }, 
+        (payload: any) => {
+            if (payload.new) {
+                setConfig(prev => ({ ...prev, ...payload.new }));
+                
+                // Si cambia la contraseña, forzar re-login
+                const newPass = payload.new.password_invitados;
+                const storedPass = localStorage.getItem('vito-guest-pass-val');
+                if (newPass && newPass !== '' && newPass !== storedPass) {
+                    alert("La contraseña de acceso ha cambiado. Por favor ingresa nuevamente.");
+                    setFlowStep('password'); setGuestPassInput(''); setDbPass(newPass);
+                }
+            }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(configChannel); };
   }, []);
 
   useEffect(() => {
@@ -420,12 +447,10 @@ export default function VitoPizzaApp() {
           
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           
-          // Lógica de visualización "HÍBRIDA": "X pizzas + Y porciones"
+          // Lógica visualización stock "híbrida" (Enteras + Porciones)
           const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
           const dbStockWhole = pizza.stock || 0;
-          
-          // Stock Total en porciones (Para la UI de "Disponible: X + Y")
-          const stockRestante = (dbStockWhole * target) + remainder;
+          const stockRestante = (dbStockWhole * target) + remainder; 
 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
           const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
@@ -443,7 +468,7 @@ export default function VitoPizzaApp() {
               ...pizza, 
               displayName, 
               displayDesc, 
-              stockRestante, // Usado para control de botones (si > 0 se puede pedir)
+              stockRestante,
               dbStockWhole, 
               remainder, 
               target, 
