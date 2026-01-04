@@ -66,14 +66,25 @@ export const ConfigView = ({
                     <input 
                         type="number" 
                         className={`w-20 p-3 rounded-xl border outline-none text-center font-bold ${base.input}`}
-                        value={config.tiempo_recordatorio_minutos || 10}
-                        onChange={(e) => setConfig({...config, tiempo_recordatorio_minutos: parseInt(e.target.value) || 0})}
+                        // Si el valor es null/undefined, mostramos '' para permitir borrado
+                        value={config.tiempo_recordatorio_minutos === 0 ? '' : config.tiempo_recordatorio_minutos}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            // Si está vacío, guardamos 0 temporalmente (o null si prefieres)
+                            setConfig({
+                                ...config, 
+                                tiempo_recordatorio_minutos: val === '' ? 0 : parseInt(val)
+                            });
+                        }}
                     />
                     <span className={`text-sm font-bold ${base.text}`}>minutos</span>
                     
                     <button 
                         onClick={async () => {
-                            await supabase.from('configuracion_dia').update({ tiempo_recordatorio_minutos: config.tiempo_recordatorio_minutos }).eq('id', config.id);
+                            // Al guardar, aseguramos que si es 0, sea al menos 1 o lo que consideres mínimo
+                            const finalVal = config.tiempo_recordatorio_minutos || 10; 
+                            await supabase.from('configuracion_dia').update({ tiempo_recordatorio_minutos: finalVal }).eq('id', config.id);
+                            setConfig({...config, tiempo_recordatorio_minutos: finalVal});
                             alert("Tiempo actualizado");
                         }} 
                         className={`ml-auto px-4 py-3 rounded-xl font-bold text-xs ${currentTheme.color} text-white shadow-lg`}
