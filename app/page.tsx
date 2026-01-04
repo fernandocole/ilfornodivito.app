@@ -47,11 +47,37 @@ const getCookingText = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') =
     return isPizza ? 'cocinando' : 'preparando';
 };
 
-// Helper simple para compresión (reutilizado)
+// --- HELPER DE COMPRESIÓN Y RECORTE CUADRADO ---
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
-        reader.onload = (event) => { const img = new Image(); img.src = event.target?.result as string; img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const MAX_HEIGHT = 800; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx?.drawImage(img, 0, 0, width, height); canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.8); }; }; reader.onerror = (error) => reject(error);
+        reader.onload = (event) => { 
+            const img = new Image(); 
+            img.src = event.target?.result as string; 
+            img.onload = () => { 
+                const canvas = document.createElement('canvas'); 
+                // Resolución baja y cuadrada (256x256)
+                const TARGET_SIZE = 256; 
+                
+                canvas.width = TARGET_SIZE; 
+                canvas.height = TARGET_SIZE; 
+                
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { reject(new Error('Canvas context error')); return; }
+
+                // Lógica de Recorte Central (Center Crop)
+                const minSide = Math.min(img.width, img.height);
+                const sx = (img.width - minSide) / 2;
+                const sy = (img.height - minSide) / 2;
+
+                // Dibujamos: (imagen, x_inicio, y_inicio, ancho_recorte, alto_recorte, x_canvas, y_canvas, ancho_canvas, alto_canvas)
+                ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, TARGET_SIZE, TARGET_SIZE);
+                
+                // Exportar a JPEG calidad media/baja
+                canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.7); 
+            }; 
+        }; 
+        reader.onerror = (error) => reject(error);
     });
 };
 
@@ -268,10 +294,8 @@ export default function VitoPizzaApp() {
       let publicAvatarUrl = null;
 
       try {
-          // 1. Guardar nombre localmente
           localStorage.setItem('vito-guest-name', nombreInvitado);
 
-          // 2. Si hay foto, subirla
           if (avatarFile) {
               const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`;
               const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, avatarFile);
@@ -283,33 +307,21 @@ export default function VitoPizzaApp() {
               }
           }
 
-          // 3. Actualizar o Crear registro en DB (Upsert por nombre)
-          // Primero buscamos si existe
           const { data: existingUser } = await supabase.from('lista_invitados')
               .select('id, avatar_url')
               .ilike('nombre', nombreInvitado.trim())
               .maybeSingle();
 
           if (existingUser) {
-              // Si existe, actualizamos foto si hay una nueva, si no dejamos la que estaba
               const urlToUpdate = publicAvatarUrl || existingUser.avatar_url;
-              await supabase.from('lista_invitados').update({ 
-                  avatar_url: urlToUpdate,
-                  origen: 'web'
-              }).eq('id', existingUser.id);
+              await supabase.from('lista_invitados').update({ avatar_url: urlToUpdate, origen: 'web' }).eq('id', existingUser.id);
               
               if (!publicAvatarUrl && existingUser.avatar_url) {
-                  // Si no subió nueva, usamos la vieja para la sesión actual
                   setAvatarPreview(existingUser.avatar_url);
                   localStorage.setItem('vito-guest-avatar', existingUser.avatar_url);
               }
           } else {
-              // Si no existe, creamos
-              await supabase.from('lista_invitados').insert([{
-                  nombre: nombreInvitado.trim(),
-                  avatar_url: publicAvatarUrl,
-                  origen: 'web'
-              }]);
+              await supabase.from('lista_invitados').insert([{ nombre: nombreInvitado.trim(), avatar_url: publicAvatarUrl, origen: 'web' }]);
           }
 
       } catch (e) {
@@ -688,12 +700,6 @@ export default function VitoPizzaApp() {
          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mt-20 -mr-20 blur-3xl"></div>
          <div className="relative z-10 pt-16">
              <div className="mb-6 flex items-center gap-4">
-                 {/* FOTO GRANDE EN BIENVENIDA */}
-                 {avatarPreview && (
-                     <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shadow-lg flex-shrink-0" onClick={() => setImageToView(avatarPreview)}>
-                         <img src={avatarPreview} className="w-full h-full object-cover" alt="Perfil" />
-                     </div>
-                 )}
                  <div>
                      {(() => {
                          const msg = getWelcomeMessage();
