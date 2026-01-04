@@ -655,15 +655,52 @@ export default function AdminPage() {
   const delValPizza = async (pid: string) => { if(confirm("¿Borrar todas?")) { await supabase.from('valoraciones').delete().eq('pizza_id', pid); cargarDatos(); } };
   
   const moverAlHorno = async (p: any, modo: 'una' | 'todas' = 'todas') => { const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); if (pendientes.length === 0) return; const target = p.porciones_individuales || config.porciones_por_pizza || 4; const totalPendientesPorciones = pendientes.reduce((acc: number, cur: any) => acc + cur.cantidad_porciones, 0); if (modo === 'una' && totalPendientesPorciones < target) { alert(`Faltan porciones`); return; } let unitsToCook = 0; if (modo === 'una') unitsToCook = 1; else { unitsToCook = Math.floor(totalPendientesPorciones / target); if (unitsToCook === 0) { alert(`No completas unidad.`); return; } } let cupoHorno = unitsToCook * target; const idsToUpdate: string[] = []; const updates = []; const pendientesOrdenados = [...pendientes].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); for (const pd of pendientesOrdenados) { if (cupoHorno <= 0) break; if (pd.cantidad_porciones <= cupoHorno) { idsToUpdate.push(pd.id); cupoHorno -= pd.cantidad_porciones; } else { const entra = cupoHorno; const queda = pd.cantidad_porciones - entra; updates.push(supabase.from('pedidos').update({ cantidad_porciones: queda }).eq('id', pd.id)); const clon = { ...pd }; delete clon.id; delete clon.created_at; updates.push(supabase.from('pedidos').insert([{ ...clon, cantidad_porciones: entra, estado: 'cocinando' }])); cupoHorno = 0; } } if (idsToUpdate.length > 0) updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', idsToUpdate)); const receta = recetas.filter(r => r.pizza_id === p.id); if(receta.length > 0) { for (const item of receta) { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const consumoTotal = item.cantidad_requerida * unitsToCook; const nuevaCant = ing.cantidad_disponible - consumoTotal; updates.push(supabase.from('ingredientes').update({ cantidad_disponible: nuevaCant }).eq('id', ing.id)); } } } if (!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id)); setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'cocinando' } : ped)); await Promise.all(updates); cargarDatos(); };
-  const entregar = async (p: any, modo: 'una' | 'todas' = 'todas', force: boolean = false) => { const candidatos = force ? p.pedidosPendientes : p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); if (candidatos.length === 0) return; const cola = [...candidatos].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); const target = p.porciones_individuales || config.porciones_por_pizza || 4; let cupoEntrega = 0; if (modo === 'una') cupoEntrega = target; else cupoEntrega = cola.reduce((acc: number, c: any) => acc + c.cantidad_porciones, 0); const entregas: any[] = []; for(const pd of cola){ if(cupoEntrega <= 0) break; entregas.push(pd); cupoEntrega -= pd.cantidad_porciones; } if(entregas.length > 0) { 
-        // --- MODIFICACIÓN PASO 9: CONFIRMACIÓN CON NOMBRES ---
-        const nombres = Array.from(new Set(entregas.map(e => e.invitado_nombre))).join(', ');
+  
+  // --- MODIFICADO: Confirmación con nombres (agrupados) ---
+  const entregar = async (p: any, modo: 'una' | 'todas' = 'todas', force: boolean = false) => { 
+    const candidatos = force ? p.pedidosPendientes : p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
+    if (candidatos.length === 0) return; 
+
+    const cola = [...candidatos].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); 
+    const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
+    let cupoEntrega = 0; 
+    
+    if (modo === 'una') cupoEntrega = target; 
+    else cupoEntrega = cola.reduce((acc: number, c: any) => acc + c.cantidad_porciones, 0); 
+    
+    const entregas: any[] = []; 
+    for(const pd of cola){ 
+        if(cupoEntrega <= 0) break; 
+        entregas.push(pd); 
+        cupoEntrega -= pd.cantidad_porciones; 
+    } 
+    
+    if(entregas.length > 0) { 
+        // --- MODIFICACIÓN PASO 9: Agrupamiento de nombres y cantidad ---
+        const counts: Record<string, number> = {};
+        entregas.forEach(e => {
+            const name = e.invitado_nombre;
+            counts[name] = (counts[name] || 0) + 1;
+        });
+        const nombres = Object.entries(counts).map(([name, count]) => `${name} (${count})`).join(', ');
+
         if(!confirm(`¿Entregar pedidos de: ${nombres}?`)) return; 
-        
+        // -------------------------------------------------------------------
+
         const idsToDelete = entregas.map(e => e.id); 
         setPedidos(prev => prev.map(ped => idsToDelete.includes(ped.id) ? { ...ped, estado: 'entregado' } : ped)); 
         await supabase.from('pedidos').update({ estado: 'entregado' }).in('id', idsToDelete); 
-        const todosEnHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); const quedanEnHorno = todosEnHorno.filter((x:any) => !idsToDelete.includes(x.id)).length; if (quedanEnHorno === 0 && !force) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz)); } cargarDatos(); } };
+        
+        const todosEnHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
+        const quedanEnHorno = todosEnHorno.filter((x:any) => !idsToDelete.includes(x.id)).length; 
+        
+        if (quedanEnHorno === 0 && !force) { 
+            await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); 
+            setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz)); 
+        } 
+        cargarDatos(); 
+    } 
+  };
 
   const metricas = useMemo(() => { 
       let lista = pizzas.filter(p => p.activa); 
