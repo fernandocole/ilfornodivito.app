@@ -243,8 +243,9 @@ export default function VitoPizzaApp() {
     }
   };
 
+  // --- FUNCIÓN DE LOGOUT CORREGIDA ---
   const logoutGuest = () => {
-    if(confirm(t.logoutConfirm || "¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
+    if(confirm("¿Cerrar sesión? Tendrás que ingresar tu nombre de nuevo.")) {
         localStorage.removeItem('vito-guest-name');
         localStorage.removeItem('vito-guest-pass-val');
         setNombreInvitado('');
@@ -308,6 +309,7 @@ export default function VitoPizzaApp() {
             if (payload.new) {
                 setConfig(prev => ({ ...prev, ...payload.new }));
                 
+                // Si cambia la contraseña, forzar re-login
                 const newPass = payload.new.password_invitados;
                 const storedPass = localStorage.getItem('vito-guest-pass-val');
                 if (newPass && newPass !== '' && newPass !== storedPass) {
@@ -434,7 +436,6 @@ export default function VitoPizzaApp() {
   }, []);
 
   // --- MEMOS ---
-  // MODIFICADO: Lógica estricta para categorías. Si está vacío o es 'Todas', devolvemos un array específico.
   const activeCategories: string[] = useMemo(() => { 
       try { 
           const parsed = JSON.parse(config.categoria_activa);
