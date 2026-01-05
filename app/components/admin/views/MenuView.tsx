@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp, Power } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp, Power, Check } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -53,18 +53,16 @@ export const MenuView = ({
         await addP(newPizzaExtras);
         setNewPizzaExtras([]);
         setTimeMin(0); setTimeSec(0);
-        setShowNewForm(false); // CONTRAER AL GUARDAR (NUEVO)
+        setShowNewForm(false);
     };
 
-    // Wrapper para guardar y contraer
     const handleSaveEdit = async (id: string) => {
         await savePizzaChanges(id);
-        setExpandedPizza(null); // CONTRAER AL GUARDAR (EDITAR)
+        setExpandedPizza(null);
     };
 
-    // Toggle rápido desde la lista
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
-        e.stopPropagation(); // Evitar que se expanda la tarjeta
+        e.stopPropagation();
         updateP(id, 'activa', !currentState);
     };
 
@@ -92,12 +90,30 @@ export const MenuView = ({
                     </button>
                 </div>
 
+                {/* --- NUEVO: CATEGORÍAS VISIBLES (CHECKLIST) --- */}
+                <div className={`p-3 rounded-2xl border ${base.innerCard} bg-opacity-50`}>
+                    <p className="text-[10px] font-bold uppercase opacity-60 mb-2">Categorías visibles para invitados:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {uniqueCategories.map((cat: string) => (
+                            <button 
+                                key={cat}
+                                onClick={() => toggleCategory(cat)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-2 ${activeCategories.includes(cat) ? 'bg-green-500 text-white border-green-500' : base.buttonSec}`}
+                            >
+                                {activeCategories.includes(cat) ? <Check size={12} strokeWidth={4}/> : <div className="w-3"/>}
+                                {cat}
+                            </button>
+                        ))}
+                        {uniqueCategories.length === 0 && <span className="text-xs opacity-50 italic">Agrega items con categoría para empezar.</span>}
+                    </div>
+                </div>
+
                 {/* --- FORMULARIO NUEVO ITEM --- */}
                 {showNewForm && (
                     <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`}>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                             
-                            {/* COLUMNA IZQUIERDA */}
+                            {/* COLUMNA IZQUIERDA: DATOS */}
                             <div className="space-y-4">
                                 <h4 className="text-xs font-bold uppercase opacity-50 tracking-wider">Datos Principales</h4>
                                 <div className="flex gap-4">
@@ -114,6 +130,7 @@ export const MenuView = ({
                                                 <option value="burger">Hamburguesa</option>
                                                 <option value="other">Otro</option>
                                             </select>
+                                            
                                             <div className="flex-1 relative">
                                                 <input list="categories-list" value={newPizzaCat} onChange={e => setNewPizzaCat(e.target.value)} placeholder="Categoría..." className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 <datalist id="categories-list">{uniqueCategories.map((c: string) => <option key={c} value={c} />)}</datalist>
@@ -139,7 +156,7 @@ export const MenuView = ({
                                 </div>
                             </div>
 
-                            {/* COLUMNA DERECHA */}
+                            {/* COLUMNA DERECHA: RECETA Y EXTRAS */}
                             <div className="space-y-4">
                                 {/* 1. RECETA BASE */}
                                 <div className={`p-4 rounded-2xl border ${base.card}`}>
@@ -205,7 +222,7 @@ export const MenuView = ({
                     </div>
                 )}
                 
-                {/* FILTROS */}
+                {/* FILTROS DE LISTA */}
                 <div className={`flex flex-col md:flex-row gap-4 justify-between items-end md:items-center text-xs pt-4 border-t ${base.divider}`}>
                     <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 no-scrollbar">
                         {['all', 'pizza', 'burger', 'other'].map(type => (
@@ -237,7 +254,7 @@ export const MenuView = ({
                     return (
                         <div key={pizza.id} className={`${base.card} rounded-3xl overflow-hidden border shadow-sm transition-all`}>
                             
-                            {/* VISTA RESUMIDA (Tipo Invitado + Toggle Activo) */}
+                            {/* VISTA RESUMIDA */}
                             <div className={`flex p-4 gap-4 cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`} onClick={() => toggleExpand(pizza.id)}>
                                 <div className={`w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>
                                     {pizza.imagen_url ? <img src={pizza.imagen_url} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center opacity-20"><Image/></div>}
@@ -248,7 +265,6 @@ export const MenuView = ({
                                             <h3 className="font-bold text-lg leading-tight truncate">{pizza.nombre}</h3>
                                             <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
                                         </div>
-                                        {/* TOGGLE RÁPIDO ACTIVO */}
                                         <button 
                                             onClick={(e) => handleQuickToggle(e, pizza.id, pizza.activa)}
                                             className={`p-2 rounded-full transition-all ${pizza.activa ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-gray-300 dark:bg-neutral-700 text-gray-500'}`}
@@ -285,12 +301,24 @@ export const MenuView = ({
                                                 <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => updateP(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
                                             </div>
                                             
+                                            {/* SELECTOR DE TIPO Y CATEGORIA (EDITAR) */}
                                             <div className="flex gap-4">
+                                                <div className="flex-1 space-y-1">
+                                                    <label className="text-[10px] font-bold uppercase opacity-40">Tipo</label>
+                                                    <select value={isEditing?.tipo ?? pizza.tipo} onChange={e => updateP(pizza.id, 'tipo', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}>
+                                                        <option value="pizza">Pizza</option>
+                                                        <option value="burger">Hamburguesa</option>
+                                                        <option value="other">Otro</option>
+                                                    </select>
+                                                </div>
                                                 <div className="flex-1 space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Categoría</label>
                                                     <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => updateP(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                     <datalist id="categories-list-edit">{uniqueCategories.map((c:string) => <option key={c} value={c} />)}</datalist>
                                                 </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-4">
                                                 <div className="w-24 space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Activo</label>
                                                     <button 
@@ -300,11 +328,8 @@ export const MenuView = ({
                                                         <span className={`text-xs font-bold ${(isEditing?.activa ?? pizza.activa) ? 'text-green-600' : 'text-red-500'}`}>{(isEditing?.activa ?? pizza.activa) ? 'SI' : 'NO'}</span>
                                                     </button>
                                                 </div>
-                                            </div>
-                                            
-                                            <div className={`flex gap-4 p-3 rounded-xl border ${base.card}`}>
-                                                <div className="flex-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40 mb-1 block">Tiempo (Min : Seg)</label>
+                                                <div className="flex-1 space-y-1">
+                                                    <label className="text-[10px] font-bold uppercase opacity-40">Tiempo (Min : Seg)</label>
                                                     <div className="flex gap-1 items-center">
                                                         <input 
                                                             type="number" 
@@ -333,7 +358,7 @@ export const MenuView = ({
                                                     {currentRecipe.map((r: any, idx: number) => {
                                                         const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
                                                         return (
-                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 border-b last:border-0 border-dashed ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
                                                                 <span className={currentTheme.text}>{ing?.nombre || r.nombre}</span>
                                                                 <div className="flex items-center gap-3">
                                                                     <span className={`font-mono opacity-50 px-1.5 py-0.5 rounded border border-current ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>{r.cantidad_requerida} {ing?.unidad}</span>
