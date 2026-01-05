@@ -22,12 +22,13 @@ export const MenuView = ({
     const [timeMin, setTimeMin] = useState<number>(0);
     const [timeSec, setTimeSec] = useState<number>(0);
 
-    // Estados locales para Adicionales
+    // Estados locales para Adicionales en "Nuevo Item"
     const [newPizzaExtras, setNewPizzaExtras] = useState<{ingrediente_id: string, nombre: string, cantidad: number, nombre_visible: string}[]>([]);
     const [newExtraIng, setNewExtraIng] = useState('');
     const [newExtraQty, setNewExtraQty] = useState('');
     const [newExtraName, setNewExtraName] = useState('');
 
+    // Estados locales para Adicionales en "Editar Item"
     const [editAdiIng, setEditAdiIng] = useState('');
     const [editAdiQty, setEditAdiQty] = useState('');
     const [editAdiName, setEditAdiName] = useState('');
@@ -53,12 +54,12 @@ export const MenuView = ({
         await addP(newPizzaExtras);
         setNewPizzaExtras([]);
         setTimeMin(0); setTimeSec(0);
-        setShowNewForm(false);
+        setShowNewForm(false); // CONTRAER AL GUARDAR
     };
 
     const handleSaveEdit = async (id: string) => {
         await savePizzaChanges(id);
-        setExpandedPizza(null);
+        setExpandedPizza(null); // CONTRAER AL GUARDAR
     };
 
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
@@ -90,7 +91,7 @@ export const MenuView = ({
                     </button>
                 </div>
 
-                {/* --- NUEVO: CATEGORÍAS VISIBLES (CHECKLIST) --- */}
+                {/* --- SECCIÓN CATEGORÍAS VISIBLES (RESTORED) --- */}
                 <div className={`p-3 rounded-2xl border ${base.innerCard} bg-opacity-50`}>
                     <p className="text-[10px] font-bold uppercase opacity-60 mb-2">Categorías visibles para invitados:</p>
                     <div className="flex flex-wrap gap-2">
@@ -130,7 +131,6 @@ export const MenuView = ({
                                                 <option value="burger">Hamburguesa</option>
                                                 <option value="other">Otro</option>
                                             </select>
-                                            
                                             <div className="flex-1 relative">
                                                 <input list="categories-list" value={newPizzaCat} onChange={e => setNewPizzaCat(e.target.value)} placeholder="Categoría..." className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 <datalist id="categories-list">{uniqueCategories.map((c: string) => <option key={c} value={c} />)}</datalist>
@@ -301,16 +301,21 @@ export const MenuView = ({
                                                 <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => updateP(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
                                             </div>
                                             
-                                            {/* SELECTOR DE TIPO Y CATEGORIA (EDITAR) */}
                                             <div className="flex gap-4">
+                                                {/* SELECTOR DE TIPO (NUEVO) */}
                                                 <div className="flex-1 space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Tipo</label>
-                                                    <select value={isEditing?.tipo ?? pizza.tipo} onChange={e => updateP(pizza.id, 'tipo', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}>
+                                                    <select 
+                                                        value={isEditing?.tipo ?? pizza.tipo} 
+                                                        onChange={e => updateP(pizza.id, 'tipo', e.target.value)} 
+                                                        className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}
+                                                    >
                                                         <option value="pizza">Pizza</option>
                                                         <option value="burger">Hamburguesa</option>
                                                         <option value="other">Otro</option>
                                                     </select>
                                                 </div>
+
                                                 <div className="flex-1 space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Categoría</label>
                                                     <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => updateP(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
@@ -318,18 +323,9 @@ export const MenuView = ({
                                                 </div>
                                             </div>
                                             
-                                            <div className="flex gap-4">
-                                                <div className="w-24 space-y-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40">Activo</label>
-                                                    <button 
-                                                        className={`h-[42px] w-full rounded-xl border cursor-pointer flex items-center justify-center gap-2 transition-colors ${ (isEditing?.activa ?? pizza.activa) ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}
-                                                        onClick={() => updateP(pizza.id, 'activa', !(isEditing?.activa ?? pizza.activa))}
-                                                    >
-                                                        <span className={`text-xs font-bold ${(isEditing?.activa ?? pizza.activa) ? 'text-green-600' : 'text-red-500'}`}>{(isEditing?.activa ?? pizza.activa) ? 'SI' : 'NO'}</span>
-                                                    </button>
-                                                </div>
-                                                <div className="flex-1 space-y-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40">Tiempo (Min : Seg)</label>
+                                            <div className={`flex gap-4 p-3 rounded-xl border ${base.card}`}>
+                                                <div className="flex-1">
+                                                    <label className="text-[10px] font-bold uppercase opacity-40 mb-1 block">Tiempo (Min : Seg)</label>
                                                     <div className="flex gap-1 items-center">
                                                         <input 
                                                             type="number" 
