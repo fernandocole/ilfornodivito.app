@@ -75,16 +75,13 @@ export default function AdminPage() {
   
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS PERSISTENTES ---
   const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
   const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
   const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
 
-  // --- NUEVO: AVATARES Y ZOOM ---
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
   const [imageToView, setImageToView] = useState<string | null>(null);
 
-  // DATOS
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [ingredientes, setIngredientes] = useState<any[]>([]);
@@ -93,7 +90,6 @@ export default function AdminPage() {
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
     
-  // ESTADO LOCAL
   const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
@@ -104,7 +100,6 @@ export default function AdminPage() {
   const [showOnlineModal, setShowOnlineModal] = useState(false);
   const prevPedidosCount = useRef(0);
     
-  // NUEVA COMIDA
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -114,7 +109,6 @@ export default function AdminPage() {
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
     
-  // RECETAS & INVENTARIO
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
@@ -136,7 +130,6 @@ export default function AdminPage() {
   const [confirmPass, setConfirmPass] = useState('');
   const [tempMotivos, setTempMotivos] = useState<Record<string, string>>({});
 
-  // ESTADOS LIMPIEZA AVANZADA
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
 
@@ -146,7 +139,37 @@ export default function AdminPage() {
   const [isCompact, setIsCompact] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  const base = isDarkMode ? { bg: "bg-neutral-950 text-white", card: "bg-neutral-900 border-neutral-800", input: "bg-black border-neutral-700 text-white placeholder-neutral-600", header: "bg-neutral-900/90 border-neutral-800", subtext: "text-neutral-500", textHead: "text-neutral-300", buttonSec: "bg-neutral-800 text-neutral-400 hover:text-white border-white/10", buttonIcon: "bg-neutral-800 text-neutral-400 hover:text-white", divider: "border-neutral-800", metric: "bg-neutral-900 border-neutral-800", blocked: "bg-red-900/10 border-red-900/30", bar: "bg-neutral-900/50 backdrop-blur-md border-white/10 shadow-lg text-white border", innerCard: "bg-neutral-800 border-neutral-700 text-white", uploadBox: "bg-neutral-800 border-neutral-600 hover:bg-neutral-700" } : { bg: "bg-gray-100 text-gray-900", card: "bg-white border-gray-200 shadow-sm", input: "bg-white border-gray-300 text-gray-900 placeholder-gray-400", header: "bg-white/90 border-gray-200", subtext: "text-gray-500", textHead: "text-gray-800", buttonSec: "bg-white text-gray-600 hover:text-black border-gray-300", buttonIcon: "bg-gray-200 text-gray-600 hover:text-black", divider: "border-gray-200", metric: "bg-white border-gray-200 shadow-sm", blocked: "bg-red-50 border-red-200", bar: "bg-white/50 backdrop-blur-md border-gray-300 shadow-lg text-gray-900 border", innerCard: "bg-neutral-100 border-neutral-200 text-gray-900", uploadBox: "bg-neutral-100 border-neutral-300 hover:bg-neutral-200" };
+  const base = isDarkMode ? {
+      bg: "bg-neutral-950 text-white",
+      card: "bg-neutral-900 border-neutral-800",
+      input: "bg-black border-neutral-700 text-white placeholder-neutral-600",
+      header: "bg-neutral-900/90 border-neutral-800",
+      subtext: "text-neutral-500",
+      textHead: "text-neutral-300",
+      buttonSec: "bg-neutral-800 text-neutral-400 hover:text-white border-white/10",
+      buttonIcon: "bg-neutral-800 text-neutral-400 hover:text-white", 
+      divider: "border-neutral-800",
+      metric: "bg-neutral-900 border-neutral-800",
+      blocked: "bg-red-900/10 border-red-900/30",
+      bar: "bg-neutral-900/50 backdrop-blur-md border-white/10 shadow-lg text-white border",
+      innerCard: "bg-neutral-800 border-neutral-700 text-white",
+      uploadBox: "bg-neutral-800 border-neutral-600 hover:bg-neutral-700"
+  } : {
+      bg: "bg-gray-100 text-gray-900",
+      card: "bg-white border-gray-200 shadow-sm",
+      input: "bg-white border-gray-300 text-gray-900 placeholder-gray-400",
+      header: "bg-white/90 border-gray-200",
+      subtext: "text-gray-500",
+      textHead: "text-gray-800",
+      buttonSec: "bg-white text-gray-600 hover:text-black border-gray-300",
+      buttonIcon: "bg-gray-200 text-gray-600 hover:text-black",
+      divider: "border-gray-200",
+      metric: "bg-white border-gray-200 shadow-sm",
+      blocked: "bg-red-50 border-red-200",
+      bar: "bg-white/50 backdrop-blur-md border-gray-300 shadow-lg text-gray-900 border",
+      innerCard: "bg-neutral-100 border-neutral-200 text-gray-900",
+      uploadBox: "bg-neutral-100 border-neutral-300 hover:bg-neutral-200"
+  };
 
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
@@ -183,7 +206,6 @@ export default function AdminPage() {
         const allPresences = Object.values(state).flat() as any[];
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
-        // FIX: Nombre Real en Online Users
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
@@ -205,7 +227,6 @@ export default function AdminPage() {
       return Array.from(cats).sort(); 
   }, [pizzas]);
 
-  // --- MEMOS CALCULADOS (DEFINIDOS ANTES DEL RETURN) ---
   const metricas = useMemo(() => { 
       let lista = pizzas.filter(p => p.activa); 
       if (activeCategories.length > 0 && !activeCategories.includes('Todas')) { 
@@ -247,7 +268,6 @@ export default function AdminPage() {
             const pend = pendientesArr.reduce((acc, c) => acc + c.cantidad_porciones, 0); 
             const oldestPending = pendientesArr.length > 0 ? pendientesArr.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0].created_at : null; 
             const enHorno = ped.filter(p => p.estado === 'cocinando').reduce((acc, c) => acc + c.cantidad_porciones, 0); 
-            // ADICIONALES
             const ads: string[] = [];
             ped.forEach(p => { if(p.detalles_adicionales) ads.push(...p.detalles_adicionales); });
 
@@ -524,7 +544,28 @@ export default function AdminPage() {
   };
 
   const updateP = async (id: string, field: string, val: any) => { if (field === 'activa') { await supabase.from('menu_pizzas').update({ activa: val }).eq('id', id); setPizzas(prev => prev.map(p => p.id === id ? { ...p, activa: val } : p)); } else { handleLocalEdit(id, field, val); } };
-  const addP = async () => { if(!newPizzaName) return; const { data: pizzaData } = await supabase.from('menu_pizzas').insert([{ nombre: newPizzaName, descripcion: newPizzaDesc, stock: 0, imagen_url: newPizzaImg, tiempo_coccion: newPizzaTime, categoria: newPizzaCat, activa: true, porciones_individuales: newPizzaPortions, tipo: newPizzaType }]).select().single(); if(pizzaData && newPizzaIngredients.length > 0) { const rows = newPizzaIngredients.map(r => ({ pizza_id: pizzaData.id, ingrediente_id: r.ingrediente_id, cantidad_requerida: r.cantidad })); await supabase.from('recetas').insert(rows); } setNewPizzaName(''); setNewPizzaDesc(''); setNewPizzaImg(''); setNewPizzaIngredients([]); await actualizarStockGlobal(); };
+  
+  // MODIFICADO: AHORA SOPORTA GUARDAR EXTRAS AL CREAR
+  const addP = async (extras?: any[]) => { 
+      if(!newPizzaName) return; 
+      const { data: pizzaData } = await supabase.from('menu_pizzas').insert([{ nombre: newPizzaName, descripcion: newPizzaDesc, stock: 0, imagen_url: newPizzaImg, tiempo_coccion: newPizzaTime, categoria: newPizzaCat, activa: true, porciones_individuales: newPizzaPortions, tipo: newPizzaType }]).select().single(); 
+      if(pizzaData) {
+          // Guardar receta base
+          if (newPizzaIngredients.length > 0) { 
+              const rows = newPizzaIngredients.map(r => ({ pizza_id: pizzaData.id, ingrediente_id: r.ingrediente_id, cantidad_requerida: r.cantidad })); 
+              await supabase.from('recetas').insert(rows); 
+          }
+          // Guardar adicionales (si existen)
+          if (extras && extras.length > 0) {
+              const extraRows = extras.map(ex => ({ pizza_id: pizzaData.id, ingrediente_id: ex.ingrediente_id, cantidad_requerida: ex.cantidad, nombre_visible: ex.nombre_visible }));
+              await supabase.from('menu_adicionales').insert(extraRows);
+          }
+      } 
+      setNewPizzaName(''); setNewPizzaDesc(''); setNewPizzaImg(''); setNewPizzaIngredients([]); 
+      await actualizarStockGlobal(); 
+      cargarDatos();
+  };
+
   const delP = async (id: string) => { if(!confirm('¿Estás seguro?')) return; await supabase.from('recetas').delete().eq('pizza_id', id); const { error } = await supabase.from('menu_pizzas').delete().eq('id', id); if (error) { if (confirm("⛔ Tiene historial. ¿Borrar TODO?")) { await supabase.from('pedidos').delete().eq('pizza_id', id); await supabase.from('valoraciones').delete().eq('pizza_id', id); await supabase.from('menu_pizzas').delete().eq('id', id); cargarDatos(); } } else { cargarDatos(); } };
   const changePass = async () => { if(!newPass) return; await supabase.from('configuracion_dia').update({password_admin: newPass}).eq('id', config.id); alert('OK'); setNewPass(''); };
   const toggleCategory = async (cat: string) => { const current = new Set(activeCategories); if (current.has(cat)) current.delete(cat); else current.add(cat); const newArr = Array.from(current); setConfig({...config, categoria_activa: JSON.stringify(newArr)}); await supabase.from('configuracion_dia').update({ categoria_activa: JSON.stringify(newArr) }).eq('id', config.id); };
@@ -599,53 +640,109 @@ export default function AdminPage() {
   const delAllVal = async () => { if(prompt("BORRAR") === 'BORRAR') { const { data } = await supabase.from('valoraciones').select('id'); const ids = data?.map(v => v.id) || []; if(ids.length) await supabase.from('valoraciones').delete().in('id', ids); cargarDatos(); } };
   const delValPizza = async (pid: string) => { if(confirm("¿Borrar todas?")) { await supabase.from('valoraciones').delete().eq('pizza_id', pid); cargarDatos(); } };
 
-  const moverAlHorno = async (p: any, modo: 'una' | 'todas' = 'todas') => { const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); if (pendientes.length === 0) return; const target = p.porciones_individuales || config.porciones_por_pizza || 4; const totalPendientesPorciones = pendientes.reduce((acc: number, cur: any) => acc + cur.cantidad_porciones, 0); if (modo === 'una' && totalPendientesPorciones < target) { alert(`Faltan porciones`); return; } let unitsToCook = 0; if (modo === 'una') unitsToCook = 1; else { unitsToCook = Math.floor(totalPendientesPorciones / target); if (unitsToCook === 0) { alert(`No completas unidad.`); return; } } let cupoHorno = unitsToCook * target; const idsToUpdate: string[] = []; const updates = []; const pendientesOrdenados = [...pendientes].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); for (const pd of pendientesOrdenados) { if (cupoHorno <= 0) break; if (pd.cantidad_porciones <= cupoHorno) { idsToUpdate.push(pd.id); cupoHorno -= pd.cantidad_porciones; } else { const entra = cupoHorno; const queda = pd.cantidad_porciones - entra; updates.push(supabase.from('pedidos').update({ cantidad_porciones: queda }).eq('id', pd.id)); const clon = { ...pd }; delete clon.id; delete clon.created_at; updates.push(supabase.from('pedidos').insert([{ ...clon, cantidad_porciones: entra, estado: 'cocinando' }])); cupoHorno = 0; } } if (idsToUpdate.length > 0) updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', idsToUpdate)); const receta = recetas.filter(r => r.pizza_id === p.id); if(receta.length > 0) { for (const item of receta) { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const consumoTotal = item.cantidad_requerida * unitsToCook; const nuevaCant = ing.cantidad_disponible - consumoTotal; updates.push(supabase.from('ingredientes').update({ cantidad_disponible: nuevaCant }).eq('id', ing.id)); } } } if (!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id)); setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'cocinando' } : ped)); await Promise.all(updates); cargarDatos(); };
-  
-  // --- ENTREGAR CON NOMBRES AGRUPADOS (CORREGIDO) ---
-  const entregar = async (p: any, modo: 'una' | 'todas' = 'todas', force: boolean = false) => { 
-    const candidatos = force ? p.pedidosPendientes : p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
-    if (candidatos.length === 0) return; 
+  // --- LÓGICA DE COCINA CON SELECCIÓN ---
+  const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
+      const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
+      if (pendientes.length === 0) return; 
+      
+      const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
+      let idsToUpdate: string[] = [];
+      let unitsToCook = 0;
 
-    const cola = [...candidatos].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); 
-    const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
-    let cupoEntrega = 0; 
-    
-    if (modo === 'una') cupoEntrega = target; 
-    else cupoEntrega = cola.reduce((acc: number, c: any) => acc + c.cantidad_porciones, 0); 
-    
-    const entregas: any[] = []; 
-    for(const pd of cola){ 
-        if(cupoEntrega <= 0) break; 
-        entregas.push(pd); 
-        cupoEntrega -= pd.cantidad_porciones; 
-    } 
-    
-    if(entregas.length > 0) { 
-        // --- MODIFICACIÓN: Agrupamiento de nombres y cantidad ---
+      // SI HAY SELECCIÓN MANUAL
+      if (idsSeleccionados && idsSeleccionados.length > 0) {
+          // Filtrar solo los que siguen pendientes
+          idsToUpdate = idsSeleccionados.filter(id => pendientes.some((p:any) => p.id === id));
+          
+          // Calcular cuántas unidades enteras representan (redondeo hacia arriba para descontar stock)
+          // Sumamos porciones de los seleccionados
+          const totalPorciones = pendientes.filter((p:any) => idsToUpdate.includes(p.id)).reduce((acc:number, curr:any) => acc + curr.cantidad_porciones, 0);
+          unitsToCook = Math.ceil(totalPorciones / target);
+
+      } else {
+          // LÓGICA AUTOMÁTICA (Mover 1 Unidad)
+          // Esta lógica se mantiene para el botón "AL HORNO (1)" simple
+          // OJO: Si usas selección, esta rama no se ejecuta.
+          let cupo = target;
+          const ordenados = [...pendientes].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          
+          for (const pd of ordenados) {
+              if (cupo <= 0) break;
+              idsToUpdate.push(pd.id);
+              cupo -= pd.cantidad_porciones;
+          }
+          unitsToCook = 1;
+      }
+
+      if (idsToUpdate.length === 0) return;
+
+      const updates = [];
+      updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', idsToUpdate)); 
+      
+      // Descontar Stock
+      const receta = recetas.filter(r => r.pizza_id === p.id); 
+      if(receta.length > 0) { 
+          for (const item of receta) { 
+              const ing = ingredientes.find(i => i.id === item.ingrediente_id); 
+              if (ing) { 
+                  const consumoTotal = item.cantidad_requerida * unitsToCook; 
+                  const nuevaCant = ing.cantidad_disponible - consumoTotal; 
+                  updates.push(supabase.from('ingredientes').update({ cantidad_disponible: nuevaCant }).eq('id', ing.id)); 
+              } 
+          } 
+      } 
+      
+      if (!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id)); 
+      
+      // Actualización Optimista Local
+      setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'cocinando' } : ped)); 
+      
+      await Promise.all(updates); 
+      // Pequeño delay para asegurar que Supabase procesó antes de recargar
+      setTimeout(() => cargarDatos(), 500);
+  };
+  
+  const entregar = async (p: any, idsSeleccionados?: string[]) => { 
+    const enHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
+    if (enHorno.length === 0) return; 
+
+    let idsToUpdate: string[] = [];
+
+    if (idsSeleccionados && idsSeleccionados.length > 0) {
+        idsToUpdate = idsSeleccionados;
+    } else {
+        // Lógica automática (Entregar 1 unidad)
+        const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
+        let cupo = target;
+        const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        for(const pd of ordenados){ 
+            if(cupo <= 0) break; 
+            idsToUpdate.push(pd.id); 
+            cupo -= pd.cantidad_porciones; 
+        } 
+    }
+
+    if(idsToUpdate.length > 0) { 
+        // Confirmación con Nombres
+        const entregas = enHorno.filter((e:any) => idsToUpdate.includes(e.id));
         const counts: Record<string, number> = {};
-        entregas.forEach(e => {
-            const name = e.invitado_nombre;
-            counts[name] = (counts[name] || 0) + 1; // Contamos 1 por cada pedido (que puede ser una porción o unidad)
-        });
-        
-        // Creamos el string legible: "Fer (2), Vito (1)"
+        entregas.forEach((e:any) => { const name = e.invitado_nombre; counts[name] = (counts[name] || 0) + 1; });
         const nombres = Object.entries(counts).map(([name, count]) => `${name} (${count})`).join(', ');
 
         if(!confirm(`¿Entregar pedidos de: ${nombres}?`)) return; 
-        // -------------------------------------------------------------------
-
-        const idsToDelete = entregas.map(e => e.id); 
-        setPedidos(prev => prev.map(ped => idsToDelete.includes(ped.id) ? { ...ped, estado: 'entregado' } : ped)); 
-        await supabase.from('pedidos').update({ estado: 'entregado' }).in('id', idsToDelete); 
         
-        const todosEnHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
-        const quedanEnHorno = todosEnHorno.filter((x:any) => !idsToDelete.includes(x.id)).length; 
+        // Optimistic Update
+        setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'entregado' } : ped)); 
         
-        if (quedanEnHorno === 0 && !force) { 
+        await supabase.from('pedidos').update({ estado: 'entregado' }).in('id', idsToUpdate); 
+        
+        // Verificar si apagar fuego
+        const quedanEnHorno = enHorno.filter((x:any) => !idsToUpdate.includes(x.id)).length; 
+        if (quedanEnHorno === 0) { 
             await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); 
             setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz)); 
         } 
-        cargarDatos(); 
+        setTimeout(() => cargarDatos(), 500); 
     } 
   };
 
