@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Flame, Clock, CheckCircle, ChefHat, UtensilsCrossed, Zap, AlertTriangle, XCircle, RotateCcw, Trash2, CheckSquare, Square } from 'lucide-react';
-import { CookingTimer } from '../../ui/CookingTimer';
+import { Flame, Clock, CheckCircle, ChefHat, UtensilsCrossed, RotateCcw, Trash2, CheckSquare, Square } from 'lucide-react';
 
 export const KitchenView = ({ 
     metricas, base, isCompact, isDarkMode, currentTheme, 
@@ -40,7 +39,6 @@ export const KitchenView = ({
         };
     };
 
-    // Función auxiliar para calcular tiempo transcurrido
     const getTimeElapsed = (dateString: string) => {
         if(!dateString) return '';
         const diff = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 60000);
@@ -87,13 +85,11 @@ export const KitchenView = ({
                     const selection = selectedOrders[p.id] || [];
                     const hasSelection = selection.length > 0;
 
-                    // Verificar selección para habilitar botones contextualmente
                     const selectedArePending = hasSelection && selection.every(id => pendingList.some((o:any) => o.id === id));
                     const selectedAreCooking = hasSelection && selection.every(id => cookingList.some((o:any) => o.id === id));
 
                     return (
                         <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'border-orange-500/50 ring-1 ring-orange-500/20' : ''} ${isCompact ? 'p-3' : 'p-4'}`}>
-                             {/* Barra de progreso */}
                              {p.cocinando && (<div className="absolute top-0 left-0 right-0 h-1 bg-orange-500 animate-pulse"></div>)}
 
                              <div className="flex justify-between items-start mb-3">
@@ -111,7 +107,20 @@ export const KitchenView = ({
                                 <div className={`p-2 rounded-xl border relative flex flex-col ${base.innerCard}`}>
                                     <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
                                         <div className="flex items-center gap-1 text-gray-500 text-xs font-bold uppercase"><Clock size={12}/> Espera ({p.enEspera})</div>
-                                        {p.enEspera > 0 && <button onClick={() => revertirEstado(p, 'cancelar_espera')} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 size={12}/></button>}
+                                        
+                                        {/* BOTÓN REVERTIR ESPERA (CORREGIDO: Pasa la selección) */}
+                                        {p.enEspera > 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    revertirEstado(p, 'cancelar_espera', selectedArePending ? selection : []);
+                                                    setSelectedOrders(prev => ({...prev, [p.id]: []})); // Limpiar selección
+                                                }} 
+                                                className="text-red-500 hover:bg-red-500/10 p-1 rounded transition-colors"
+                                                title={selectedArePending ? `Cancelar ${selection.length} seleccionados` : "Cancelar TODOS"}
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                         {pendingList.map((ord: any) => (
@@ -134,7 +143,20 @@ export const KitchenView = ({
                                             <Flame size={12} className={p.cocinando ? 'animate-bounce' : ''}/> Horno ({p.enHorno})
                                         </div>
                                         {p.cocinando && p.cocinando_inicio && <span className="text-[10px] font-mono opacity-80">{getTimeElapsed(p.cocinando_inicio)}</span>}
-                                        {p.enHorno > 0 && <button onClick={() => revertirEstado(p, 'sacar_horno')} className="text-gray-500 hover:bg-white/20 p-1 rounded"><RotateCcw size={12}/></button>}
+                                        
+                                        {/* BOTÓN SACAR DE HORNO (CORREGIDO: Pasa la selección) */}
+                                        {p.enHorno > 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    revertirEstado(p, 'sacar_horno', selectedAreCooking ? selection : []);
+                                                    setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                                }} 
+                                                className="text-gray-500 hover:bg-white/20 p-1 rounded transition-colors"
+                                                title={selectedAreCooking ? `Devolver ${selection.length} seleccionados` : "Devolver TODOS"}
+                                            >
+                                                <RotateCcw size={14}/>
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                         {cookingList.map((ord: any) => (
@@ -154,7 +176,10 @@ export const KitchenView = ({
                              {/* ACCIONES */}
                              <div className="flex gap-2">
                                 <button 
-                                    onClick={() => toggleCocinando(p, selectedArePending ? selection : undefined)} 
+                                    onClick={() => {
+                                        toggleCocinando(p, selectedArePending ? selection : undefined);
+                                        setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                    }} 
                                     disabled={p.enEspera === 0}
                                     className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enEspera > 0 ? (selectedArePending ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white hover:bg-black') : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
@@ -162,7 +187,10 @@ export const KitchenView = ({
                                 </button>
 
                                 <button 
-                                    onClick={() => entregar(p, selectedAreCooking ? selection : undefined)} 
+                                    onClick={() => {
+                                        entregar(p, selectedAreCooking ? selection : undefined);
+                                        setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                    }} 
                                     disabled={p.enHorno === 0}
                                     className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enHorno > 0 ? (selectedAreCooking ? 'bg-green-600 text-white' : 'bg-green-600 text-white hover:bg-green-500') : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >

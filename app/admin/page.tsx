@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
@@ -155,13 +155,50 @@ export default function AdminPage() {
       }
   }, [autenticado]);
 
-  // --- NUEVO: RECALCULAR STOCK AUTOMÁTICAMENTE ---
-  // Esto asegura que al cambiar pedidos o inventario, el stock visual se actualice
+  // --- RECALCULAR STOCK VISUAL LOCALMENTE (OPTIMISTIC) ---
   useEffect(() => {
       if (autenticado && pizzas.length > 0 && ingredientes.length > 0) {
-          actualizarStockGlobal();
+          recalcularStockLocal();
       }
-  }, [pedidos, ingredientes, recetas, autenticado]); // Dependencias para recalcular
+  }, [ingredientes, recetas, pedidos]); 
+
+  // Función que recalcula el stock en memoria sin ir a la DB
+  const recalcularStockLocal = () => {
+       const reservedStock: Record<string, number> = {};
+       // Calcular reservado
+       const pedidosActivos = pedidos.filter(p => p.estado !== 'entregado');
+       pedidosActivos.forEach((pedido: any) => {
+           const pizza = pizzas.find((p:any) => p.id === pedido.pizza_id);
+           const portions = pizza?.porciones_individuales || config.porciones_por_pizza || 8;
+           const fraccion = pedido.cantidad_porciones / portions;
+           const rec = recetas.filter((r: any) => r.pizza_id === pedido.pizza_id);
+           rec.forEach((item: any) => {
+               reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion);
+           });
+       });
+       setReservedState(reservedStock);
+
+       // Actualizar Pizzas State
+       setPizzas(prevPizzas => prevPizzas.map(p => {
+           const pRecetas = recetas.filter((r: any) => r.pizza_id === p.id);
+           let stockVirtual = 999;
+           if (pRecetas.length > 0) {
+               let minPizzasPosibles = Infinity;
+               pRecetas.forEach((item: any) => {
+                   const ing = ingredientes.find((i: any) => i.id === item.ingrediente_id);
+                   if (ing) {
+                       const fisico = ing.cantidad_disponible || 0;
+                       const reservado = reservedStock[ing.id] || 0;
+                       const disponibleReal = Math.max(0, fisico - reservado);
+                       const posibles = item.cantidad_requerida > 0 ? Math.floor(disponibleReal / item.cantidad_requerida) : 999;
+                       if (posibles < minPizzasPosibles) minPizzasPosibles = posibles;
+                   } else { minPizzasPosibles = 0; }
+               });
+               stockVirtual = minPizzasPosibles === Infinity ? 0 : minPizzasPosibles;
+           } else { stockVirtual = 0; }
+           return { ...p, stock: stockVirtual };
+       }));
+  };
 
   useEffect(() => {
     if (autenticado && 'serviceWorker' in navigator) {
@@ -206,81 +243,34 @@ export default function AdminPage() {
   
   const handleImageUpload = async (event: any, pizzaId: string | null = null) => { const file = event.target.files?.[0]; if (!file) return; setUploading(true); try { const compressedBlob = await compressImage(file); const fileName = `${Date.now()}.jpg`; const { error } = await supabase.storage.from('pizzas').upload(fileName, new File([compressedBlob], file.name, { type: 'image/jpeg' })); if (error) throw error; const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName); if(pizzaId) handleLocalEdit(pizzaId, 'imagen_url', data.publicUrl); else setNewPizzaImg(data.publicUrl); } catch (e: any) { alert('Error: ' + e.message); } finally { setUploading(false); } };
 
-  // --- ACTUALIZACIÓN STOCK (Optimización) ---
   const actualizarStockGlobal = async () => { 
-      const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); 
-      // Calculamos sobre los datos YA EN MEMORIA (pedidos, recetas, ingredientes) en lugar de pedir a DB
-      if(!recetas || !ingredientes || !pizzas || !pedidos || !config) return;
-      
-      const porcionesDefault = config.porciones_por_pizza || 8;
-      const reservedStock: Record<string, number> = {};
-      
-      // Solo pedidos activos
-      const pedidosActivos = pedidos.filter(p => p.estado !== 'entregado');
-
-      pedidosActivos.forEach((pedido: any) => { 
-          const pizza = pizzas.find((p:any) => p.id === pedido.pizza_id); 
-          const porcionesEntera = pizza?.porciones_individuales || porcionesDefault; 
-          const fraccion = pedido.cantidad_porciones / porcionesEntera; 
-          const recetaPizza = recetas.filter((r: any) => r.pizza_id === pedido.pizza_id); 
-          recetaPizza.forEach((item: any) => { 
-              const cantidadNecesaria = item.cantidad_requerida * fraccion; 
-              reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + cantidadNecesaria; 
-          }); 
-      }); 
-      setReservedState(reservedStock); 
-
-      // Actualizar Stock Virtual en Estado Local
-      const updatedPizzas = pizzas.map(p => { 
-          const pRecetas = recetas.filter((r: any) => r.pizza_id === p.id); 
-          let stockVirtual = 999; 
-          if (pRecetas.length > 0) { 
-              let minPizzasPosibles = Infinity; 
-              pRecetas.forEach((item: any) => { 
-                  const ing = ingredientes.find((i: any) => i.id === item.ingrediente_id); 
-                  if (ing) { 
-                      const fisico = ing.cantidad_disponible || 0; 
-                      const reservado = reservedStock[ing.id] || 0; 
-                      const disponibleReal = Math.max(0, fisico - reservado); 
-                      const posibles = item.cantidad_requerida > 0 ? Math.floor(disponibleReal / item.cantidad_requerida) : 999; 
-                      if (posibles < minPizzasPosibles) minPizzasPosibles = posibles; 
-                  } else { minPizzasPosibles = 0; } 
-              }); 
-              stockVirtual = minPizzasPosibles === Infinity ? 0 : minPizzasPosibles; 
-          } else { stockVirtual = 0; } 
-          
-          // Si cambió, lo marcamos para update visual
-          if (p.stock !== stockVirtual) {
-               // Update async DB but return updated obj immediately
-               supabase.from('menu_pizzas').update({ stock: stockVirtual }).eq('id', p.id);
-               return { ...p, stock: stockVirtual };
-          }
-          return p;
-      }); 
-      // No hacemos setPizzas(updatedPizzas) aquí para evitar loop infinito si no es necesario,
-      // pero si el valor cambió, deberíamos. Para simplificar, el cálculo visual se hace en el render o memo.
-      // En este caso, como 'metricas' usa 'pizzas', necesitamos que 'pizzas' tenga el stock actualizado.
-      // O mejor: 'metricas' recalcula 'stockRestante' en base a la info actual.
+      // Esta función ahora solo carga datos frescos de la DB si es necesario, 
+      // pero la lógica de actualización visual ya la maneja 'recalcularStockLocal'
+      // para mayor velocidad. Solo la mantenemos para sincronización forzada.
+      // ... Código de fetch original ...
+      const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString(); const [ { data: allRecetas }, { data: allIngs }, { data: allPizzas }, { data: allPendientes }, { data: configDia } ] = await Promise.all([ supabase.from('recetas').select('*'), supabase.from('ingredientes').select('*'), supabase.from('menu_pizzas').select('*'), supabase.from('pedidos').select('*').neq('estado', 'entregado').gte('created_at', iso), supabase.from('configuracion_dia').select('*').single() ]); if(!allRecetas || !allIngs || !allPizzas || !allPendientes || !configDia) return; 
+      // Si llegan datos nuevos, actualizamos estados y eso disparará el useEffect de recalcularStockLocal
+      setRecetas(allRecetas); setIngredientes(allIngs); setPizzas(allPizzas);
   };
   
-  const cargarDatos = async () => { const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString(); const [piz, ing, rec, ped, inv, conf, val, logsData, adi] = await Promise.all([ supabase.from('menu_pizzas').select('*').order('created_at', { ascending: true }), supabase.from('ingredientes').select('*').order('nombre'), supabase.from('recetas').select('*'), supabase.from('pedidos').select('*').gte('created_at', iso).order('created_at', { ascending: true }), supabase.from('lista_invitados').select('*').order('nombre'), supabase.from('configuracion_dia').select('*').single(), supabase.from('valoraciones').select('*').gte('created_at', iso).order('created_at', { ascending: false }), supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(100), supabase.from('menu_adicionales').select('*') ]); if(piz.data) setPizzas(piz.data); if(ing.data) setIngredientes(ing.data); if(rec.data) setRecetas(rec.data); if(adi.data) setAdicionales(adi.data); if(ped.data) { setPedidos(ped.data); setInvitadosCount(new Set(ped.data.map((p: any) => p.invitado_nombre.toLowerCase())).size); if (prevPedidosCount.current > 0 && ped.data.length > prevPedidosCount.current) { sendAdminNotification("¡Nuevos Pedidos!", `Han entrado ${ped.data.length - prevPedidosCount.current} pedidos nuevos.`); } prevPedidosCount.current = ped.data.length; } if(inv.data) { setInvitadosDB(inv.data); const map: Record<string, string> = {}; inv.data.forEach((u: any) => { if(u.avatar_url) map[u.nombre.toLowerCase().trim()] = u.avatar_url; }); setAvatarMap(map); } if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) actualizarStockGlobal(); };
+  const cargarDatos = async () => { const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString(); const [piz, ing, rec, ped, inv, conf, val, logsData, adi] = await Promise.all([ supabase.from('menu_pizzas').select('*').order('created_at', { ascending: true }), supabase.from('ingredientes').select('*').order('nombre'), supabase.from('recetas').select('*'), supabase.from('pedidos').select('*').gte('created_at', iso).order('created_at', { ascending: true }), supabase.from('lista_invitados').select('*').order('nombre'), supabase.from('configuracion_dia').select('*').single(), supabase.from('valoraciones').select('*').gte('created_at', iso).order('created_at', { ascending: false }), supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(100), supabase.from('menu_adicionales').select('*') ]); if(piz.data) setPizzas(piz.data); if(ing.data) setIngredientes(ing.data); if(rec.data) setRecetas(rec.data); if(adi.data) setAdicionales(adi.data); if(ped.data) { setPedidos(ped.data); setInvitadosCount(new Set(ped.data.map((p: any) => p.invitado_nombre.toLowerCase())).size); if (prevPedidosCount.current > 0 && ped.data.length > prevPedidosCount.current) { sendAdminNotification("¡Nuevos Pedidos!", `Han entrado ${ped.data.length - prevPedidosCount.current} pedidos nuevos.`); } prevPedidosCount.current = ped.data.length; } if(inv.data) { setInvitadosDB(inv.data); const map: Record<string, string> = {}; inv.data.forEach((u: any) => { if(u.avatar_url) map[u.nombre.toLowerCase().trim()] = u.avatar_url; }); setAvatarMap(map); } if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) recalcularStockLocal(); };
 
   // --- ACTIONS ---
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // --- REVERTIR ESTADO SELECTIVO ---
+  // --- REVERTIR ESTADO CORREGIDO (CON SELECCIÓN) ---
   const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => { 
       let targets = [];
       const sourceList = accion === 'sacar_horno' 
           ? p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando')
           : p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente');
 
-      // Filtro selectivo
+      // Si hay selección, usamos solo esos. Si no, TODOS.
       if (idsSeleccionados && idsSeleccionados.length > 0) {
            targets = sourceList.filter((x:any) => idsSeleccionados.includes(x.id));
       } else {
-           targets = sourceList; // Todos si no hay selección
+           targets = sourceList; 
       }
 
       if (targets.length === 0) return;
@@ -290,23 +280,25 @@ export default function AdminPage() {
       if (accion === 'sacar_horno') {
           if (!confirm(`¿Devolver ${targets.length} pedidos de "En Horno" a "En Espera"?`)) return;
           
-          // Optimistic
+          // Optimistic: Actualizar estado de pedidos
           setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'pendiente' } : o));
 
           await supabase.from('pedidos').update({ estado: 'pendiente' }).in('id', ids);
           
-          // Si vaciamos el horno, apagar el fuego
+          // Si vaciamos el horno (y no quedan otros cocinando), apagar el fuego
           const remainingInOven = p.pedidosPendientes.filter((x:any) => x.estado === 'cocinando' && !ids.includes(x.id));
           if(remainingInOven.length === 0) {
               await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
+              setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz));
           }
 
       } else if (accion === 'cancelar_espera') {
           if (!confirm(`¿ELIMINAR ${targets.length} pedidos en espera y devolver stock?`)) return;
           
-          // Optimistic
+          // Optimistic: Eliminar pedidos
           setPedidos(prev => prev.filter(o => !ids.includes(o.id)));
 
+          // Calcular Stock a devolver
           const stockDevolver: Record<string, number> = {};
           const receta = recetas.filter(r => r.pizza_id === p.id);
           const target = p.porciones_individuales || config.porciones_por_pizza || 1;
@@ -316,12 +308,13 @@ export default function AdminPage() {
              receta.forEach(ing => { if (ing.ingrediente_id) { stockDevolver[ing.ingrediente_id] = (stockDevolver[ing.ingrediente_id] || 0) + (ing.cantidad_requerida * ratio); } });
           });
           
+          // Actualizar DB
           await supabase.from('pedidos').delete().in('id', ids);
           
           const updates = Object.keys(stockDevolver).map(async (ingId) => {
               const ingActual = ingredientes.find(i => i.id === ingId);
               if (ingActual) { 
-                  // Update local state optimistic
+                  // Optimistic: Actualizar Ingredientes
                   const newQty = ingActual.cantidad_disponible + stockDevolver[ingId];
                   setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQty } : i));
                   await supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ingId); 
@@ -329,11 +322,13 @@ export default function AdminPage() {
           });
           await Promise.all(updates);
       }
+      // La actualización visual del stock se hará automática gracias al useEffect([ingredientes...])
+      // pero forzamos recarga para asegurar consistencia
       setTimeout(() => cargarDatos(), 500);
   };
 
-  const eliminarUnidad = async (nombre: string, pizzaId: string) => { const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId); let candidate = userOrders.find(p => p.estado === 'pendiente'); if (!candidate) candidate = userOrders.find(p => p.estado === 'cocinando'); if (!candidate) candidate = userOrders.find(p => p.estado === 'entregado'); if (candidate) { if (!confirm(`¿Eliminar 1 unidad (${candidate.estado}) de ${nombre}?`)) return; const devolverStock = confirm("¿Devolver los ingredientes al Inventario?"); if (devolverStock) { const pizza = pizzas.find(p => p.id === pizzaId); const porcionesTotal = pizza?.porciones_individuales || config.porciones_por_pizza || 1; const recetaPizza = recetas.filter(r => r.pizza_id === pizzaId); if (recetaPizza.length > 0) { const fraccion = candidate.cantidad_porciones / porcionesTotal; const updates = recetaPizza.map(async (item: any) => { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const devolver = item.cantidad_requerida * fraccion; await supabase.from('ingredientes').update({ cantidad_disponible: ing.cantidad_disponible + devolver }).eq('id', ing.id); } }); await Promise.all(updates); alert("Ingredientes devueltos."); } } await supabase.from('pedidos').delete().eq('id', candidate.id); if (candidate.estado === 'cocinando') { const { count } = await supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('pizza_id', pizzaId).eq('estado', 'cocinando'); if (count === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); } } setPedidos(prev => prev.filter(p => p.id !== candidate!.id)); cargarDatos(); await actualizarStockGlobal(); } else { alert("No se encontraron pedidos de este usuario para esta comida."); } };
-  const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => { const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado); if (candidate) { if (!confirm(`¿Eliminar 1 unidad (${estado}) de ${nombre}?`)) return; const devolverStock = confirm("¿Devolver los ingredientes al Inventario?"); if (devolverStock) { const pizza = pizzas.find(p => p.id === pizzaId); const porcionesTotal = pizza?.porciones_individuales || config.porciones_por_pizza || 1; const recetaPizza = recetas.filter(r => r.pizza_id === pizzaId); if (recetaPizza.length > 0) { const fraccion = candidate.cantidad_porciones / porcionesTotal; const updates = recetaPizza.map(async (item: any) => { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const devolver = item.cantidad_requerida * fraccion; await supabase.from('ingredientes').update({ cantidad_disponible: ing.cantidad_disponible + devolver }).eq('id', ing.id); } }); await Promise.all(updates); alert("Ingredientes devueltos."); } } await supabase.from('pedidos').delete().eq('id', candidate.id); if (estado === 'cocinando') { const { count } = await supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('pizza_id', pizzaId).eq('estado', 'cocinando'); if (count === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); } } setPedidos(prev => prev.filter(p => p.id !== candidate.id)); cargarDatos(); await actualizarStockGlobal(); } else { alert("No se encontró ese pedido."); } };
+  const eliminarUnidad = async (nombre: string, pizzaId: string) => { const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId); let candidate = userOrders.find(p => p.estado === 'pendiente'); if (!candidate) candidate = userOrders.find(p => p.estado === 'cocinando'); if (!candidate) candidate = userOrders.find(p => p.estado === 'entregado'); if (candidate) { if (!confirm(`¿Eliminar 1 unidad (${candidate.estado}) de ${nombre}?`)) return; const devolverStock = confirm("¿Devolver los ingredientes al Inventario?"); if (devolverStock) { const pizza = pizzas.find(p => p.id === pizzaId); const porcionesTotal = pizza?.porciones_individuales || config.porciones_por_pizza || 1; const recetaPizza = recetas.filter(r => r.pizza_id === pizzaId); if (recetaPizza.length > 0) { const fraccion = candidate.cantidad_porciones / porcionesTotal; const updates = recetaPizza.map(async (item: any) => { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const devolver = item.cantidad_requerida * fraccion; await supabase.from('ingredientes').update({ cantidad_disponible: ing.cantidad_disponible + devolver }).eq('id', ing.id); } }); await Promise.all(updates); alert("Ingredientes devueltos."); } } await supabase.from('pedidos').delete().eq('id', candidate.id); if (candidate.estado === 'cocinando') { const { count } = await supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('pizza_id', pizzaId).eq('estado', 'cocinando'); if (count === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); } } setPedidos(prev => prev.filter(p => p.id !== candidate!.id)); cargarDatos(); actualizarStockGlobal(); } else { alert("No se encontraron pedidos de este usuario para esta comida."); } };
+  const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => { const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado); if (candidate) { if (!confirm(`¿Eliminar 1 unidad (${estado}) de ${nombre}?`)) return; const devolverStock = confirm("¿Devolver los ingredientes al Inventario?"); if (devolverStock) { const pizza = pizzas.find(p => p.id === pizzaId); const porcionesTotal = pizza?.porciones_individuales || config.porciones_por_pizza || 1; const recetaPizza = recetas.filter(r => r.pizza_id === pizzaId); if (recetaPizza.length > 0) { const fraccion = candidate.cantidad_porciones / porcionesTotal; const updates = recetaPizza.map(async (item: any) => { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const devolver = item.cantidad_requerida * fraccion; await supabase.from('ingredientes').update({ cantidad_disponible: ing.cantidad_disponible + devolver }).eq('id', ing.id); } }); await Promise.all(updates); alert("Ingredientes devueltos."); } } await supabase.from('pedidos').delete().eq('id', candidate.id); if (estado === 'cocinando') { const { count } = await supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('pizza_id', pizzaId).eq('estado', 'cocinando'); if (count === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); } } setPedidos(prev => prev.filter(p => p.id !== candidate.id)); cargarDatos(); actualizarStockGlobal(); } else { alert("No se encontró ese pedido."); } };
   const cleanOrdersByState = async (status: 'pendiente' | 'cocinando' | 'entregado') => { const label = status === 'pendiente' ? 'EN ESPERA' : status === 'cocinando' ? 'EN PREPARACIÓN' : 'LISTAS/ENTREGADAS'; if (!confirm(`¿Estás seguro de BORRAR todos los pedidos ${label}?`)) return; await supabase.from('pedidos').delete().eq('estado', status); if (status === 'cocinando') { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000'); } await cargarDatos(); alert(`Pedidos ${label} eliminados.`); };
   const forceStopCooking = async (pizzaId: string) => { if(!confirm("¿Forzar detención? Esto apagará el indicador 'En Horno' aunque haya errores.")) return; await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); await cargarDatos(); };
   const resetAllOrders = async () => { const promptText = prompt('Escribe "BORRAR TODO" para eliminar TODOS los pedidos del día.'); if (promptText?.toUpperCase() !== "BORRAR TODO") return; const reponer = confirm("¿Reponer stock al inventario antes de borrar?"); if (reponer) { const pedidosActivos = pedidos.filter(p => p.estado !== 'cancelado'); const stockDevolver: Record<string, number> = {}; pedidosActivos.forEach(p => { const pizza = pizzas.find(pz => pz.id === p.pizza_id); if(pizza) { const receta = recetas.filter(r => r.pizza_id === p.pizza_id); const portions = pizza.porciones_individuales || config.porciones_por_pizza || 1; const ratio = p.cantidad_porciones / portions; receta.forEach(ing => { if(ing.ingrediente_id && ing.cantidad_requerida) { stockDevolver[ing.ingrediente_id] = (stockDevolver[ing.ingrediente_id] || 0) + (ing.cantidad_requerida * ratio); } }); } }); const updates = Object.keys(stockDevolver).map(async (ingId) => { const ingActual = ingredientes.find(i => i.id === ingId); if (ingActual) { await supabase.from('ingredientes').update({ cantidad_disponible: ingActual.cantidad_disponible + stockDevolver[ingId] }).eq('id', ingId); } }); await Promise.all(updates); alert("Stock repuesto al inventario."); } const { error } = await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000'); if(!error) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).neq('id', '00000000-0000-0000-0000-000000000000'); alert("OK, pedidos eliminados."); cargarDatos(); } };
@@ -416,7 +411,6 @@ export default function AdminPage() {
 
   // --- LÓGICA DE COCINA OPTIMISTA Y SELECTIVA ---
   const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
-      // 1. Determinar qué pedidos mover
       const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
       if (pendientes.length === 0) return; 
       
