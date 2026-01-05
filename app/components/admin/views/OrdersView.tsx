@@ -1,8 +1,8 @@
-import { User, CheckCircle, Clock, Flame, RotateCcw, X, Trash2, Calendar } from 'lucide-react';
+import { User, CheckCircle, Clock, Flame, RotateCcw, X, Trash2, Calendar, ZoomIn } from 'lucide-react';
 
 export const OrdersView = ({ 
     pedidosAgrupados, base, isDarkMode, eliminarPedidosGusto, eliminarUnidad,
-    eliminarUnidadPorEstado, openCleanModal // NUEVA PROP
+    eliminarUnidadPorEstado, openCleanModal, avatarMap, setImageToView // NUEVAS PROPS
 }: any) => {
     
     return (
@@ -38,11 +38,25 @@ export const OrdersView = ({
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {pedidosAgrupados.map((u: any) => (
+                    {pedidosAgrupados.map((u: any) => {
+                        const avatarUrl = avatarMap[u.nombre.toLowerCase().trim()];
+
+                        return (
                         <div key={u.nombre} className={`p-4 rounded-2xl border ${base.card} shadow-sm animate-in fade-in slide-in-from-bottom-2`}>
                             <div className="flex justify-between items-start mb-3 border-b border-gray-200 dark:border-white/10 pb-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-neutral-200 dark:bg-neutral-800 rounded-full"><User size={16}/></div>
+                                <div className="flex items-center gap-3">
+                                    {/* AVATAR O ICONO */}
+                                    <div 
+                                        className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white overflow-hidden border border-white/10 cursor-pointer ${avatarUrl ? 'bg-black' : 'bg-neutral-500'}`}
+                                        onClick={() => avatarUrl && setImageToView(avatarUrl)}
+                                    >
+                                        {avatarUrl ? (
+                                            <img src={avatarUrl} className="w-full h-full object-cover" alt={u.nombre}/>
+                                        ) : (
+                                            <User size={20}/>
+                                        )}
+                                    </div>
+
                                     <h3 className="font-bold text-lg">{u.nombre}</h3>
                                 </div>
                                 <div className="text-right">
@@ -118,7 +132,7 @@ export const OrdersView = ({
                                 </button>
                             </div>
                         </div>
-                    ))}
+                    );})}
                 </div>
             )}
         </div>
