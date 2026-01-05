@@ -18,14 +18,17 @@ export const MenuView = ({
     const [expandedPizza, setExpandedPizza] = useState<string | null>(null);
     const [showNewForm, setShowNewForm] = useState(false);
 
+    // Estados para inputs de tiempo
     const [timeMin, setTimeMin] = useState<number>(0);
     const [timeSec, setTimeSec] = useState<number>(0);
 
+    // Estados locales para Adicionales en "Nuevo Item"
     const [newPizzaExtras, setNewPizzaExtras] = useState<{ingrediente_id: string, nombre: string, cantidad: number, nombre_visible: string}[]>([]);
     const [newExtraIng, setNewExtraIng] = useState('');
     const [newExtraQty, setNewExtraQty] = useState('');
     const [newExtraName, setNewExtraName] = useState('');
 
+    // Estados locales para Adicionales en "Editar Item"
     const [editAdiIng, setEditAdiIng] = useState('');
     const [editAdiQty, setEditAdiQty] = useState('');
     const [editAdiName, setEditAdiName] = useState('');
@@ -71,13 +74,13 @@ export const MenuView = ({
                     </h2>
                     <button 
                         onClick={() => setShowNewForm(!showNewForm)} 
-                        className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : 'bg-black text-white hover:bg-neutral-800'}`}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.bg} bg-black text-white hover:opacity-80`}`}
                     >
                         {showNewForm ? <X size={16}/> : <Plus size={16}/>} {showNewForm ? 'Cerrar' : 'Nuevo Item'}
                     </button>
                 </div>
 
-                {/* --- FORMULARIO NUEVO ITEM (FONDO NEGRO CORREGIDO) --- */}
+                {/* --- FORMULARIO NUEVO ITEM --- */}
                 {showNewForm && (
                     <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`}>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -99,7 +102,6 @@ export const MenuView = ({
                                                 <option value="burger">Hamburguesa</option>
                                                 <option value="other">Otro</option>
                                             </select>
-                                            
                                             <div className="flex-1 relative">
                                                 <input list="categories-list" value={newPizzaCat} onChange={e => setNewPizzaCat(e.target.value)} placeholder="Categoría..." className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 <datalist id="categories-list">{uniqueCategories.map((c: string) => <option key={c} value={c} />)}</datalist>
@@ -141,9 +143,10 @@ export const MenuView = ({
                                         <input type="number" value={newPizzaRecipeQty} onChange={e => setNewPizzaRecipeQty(e.target.value)} placeholder="Cant." className={`w-16 p-2 rounded-lg text-xs border outline-none ${base.input}`} />
                                         <button onClick={addToNewPizzaRecipe} className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-500"><Plus size={16}/></button>
                                     </div>
+                                    {/* LISTA INGREDIENTES CON FONDO GRIS OSCURO */}
                                     <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                         {newPizzaIngredients.map((ing: any, idx: number) => (
-                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
                                                 <span>{ing.nombre} ({ing.cantidad})</span>
                                                 <button onClick={() => removeFromNewPizzaRecipe(idx)} className="text-red-500"><X size={12}/></button>
                                             </div>
@@ -167,7 +170,7 @@ export const MenuView = ({
                                     </div>
                                     <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                         {newPizzaExtras.map((ex: any, idx: number) => (
-                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-purple-500/10 border-purple-500/20`}>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold">{ex.nombre_visible}</span>
                                                     <span className="opacity-50 text-[10px]">{ex.nombre} ({ex.cantidad})</span>
@@ -180,7 +183,14 @@ export const MenuView = ({
                             </div>
                          </div>
                          <div className={`flex justify-end pt-4 border-t ${base.divider}`}>
-                            <button onClick={handleAddP} disabled={!newPizzaName} className="px-8 py-3 bg-black dark:bg-white dark:text-black text-white font-bold rounded-xl hover:opacity-80 disabled:opacity-50 shadow-lg transition-transform active:scale-95">CREAR ITEM</button>
+                            {/* BOTÓN CREAR CON COLOR DEL TEMA */}
+                            <button 
+                                onClick={handleAddP} 
+                                disabled={!newPizzaName} 
+                                className={`px-8 py-3 text-white font-bold rounded-xl hover:opacity-80 disabled:opacity-50 shadow-lg transition-transform active:scale-95 ${currentTheme.color}`}
+                            >
+                                CREAR ITEM
+                            </button>
                          </div>
                     </div>
                 )}
@@ -189,7 +199,7 @@ export const MenuView = ({
                 <div className={`flex flex-col md:flex-row gap-4 justify-between items-end md:items-center text-xs pt-4 border-t ${base.divider}`}>
                     <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 no-scrollbar">
                         {['all', 'pizza', 'burger', 'other'].map(type => (
-                            <button key={type} onClick={() => setTypeFilter(type)} className={`px-4 py-2 rounded-full border transition-colors whitespace-nowrap font-bold uppercase ${typeFilter === type ? 'bg-black text-white border-black dark:bg-white dark:text-black' : base.buttonSec}`}>
+                            <button key={type} onClick={() => setTypeFilter(type)} className={`px-4 py-2 rounded-full border transition-colors whitespace-nowrap font-bold uppercase ${typeFilter === type ? `${currentTheme.color} text-white border-transparent` : base.buttonSec}`}>
                                 {type === 'all' ? 'Todos' : type}
                             </button>
                         ))}
@@ -240,9 +250,9 @@ export const MenuView = ({
                                 </div>
                             </div>
 
-                            {/* ZONA EXPANDIDA DE EDICIÓN (FONDO NEGRO CORREGIDO) */}
+                            {/* ZONA EXPANDIDA DE EDICIÓN */}
                             {expandedPizza === pizza.id && (
-                                <div className={`p-5 border-t ${base.divider} ${isDarkMode ? 'bg-neutral-900' : 'bg-neutral-50'} space-y-6 animate-in slide-in-from-top-2`}>
+                                <div className={`p-5 border-t ${base.divider} ${isDarkMode ? 'bg-neutral-950' : 'bg-neutral-50'} space-y-6 animate-in slide-in-from-top-2`}>
                                     
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* COLUMNA 1 */}
@@ -304,7 +314,7 @@ export const MenuView = ({
                                                     {currentRecipe.map((r: any, idx: number) => {
                                                         const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
                                                         return (
-                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 border-b last:border-0 border-dashed ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
                                                                 <span className={currentTheme.text}>{ing?.nombre || r.nombre}</span>
                                                                 <div className="flex items-center gap-3">
                                                                     <span className={`font-mono opacity-50 px-1.5 py-0.5 rounded border border-current ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>{r.cantidad_requerida} {ing?.unidad}</span>
@@ -351,7 +361,7 @@ export const MenuView = ({
                                                     {currentAdicionales.map((adi: any) => {
                                                         const ingName = ingredients.find((i:any) => i.id === adi.ingrediente_id)?.nombre || '???';
                                                         return (
-                                                            <div key={adi.id} className={`flex justify-between items-center text-xs p-2 rounded-lg mb-1 ${isDarkMode ? 'bg-purple-900/20 border border-purple-500/30' : 'bg-purple-50 border border-purple-200'}`}>
+                                                            <div key={adi.id} className="flex justify-between items-center text-xs p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg mb-1">
                                                                 <div>
                                                                     <span className="font-bold block">{adi.nombre_visible}</span>
                                                                     <span className="opacity-50 text-[10px]">Descuenta: {adi.cantidad_requerida} de {ingName}</span>
