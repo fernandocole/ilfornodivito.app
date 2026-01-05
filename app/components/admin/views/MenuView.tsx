@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp, Power } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -22,13 +22,12 @@ export const MenuView = ({
     const [timeMin, setTimeMin] = useState<number>(0);
     const [timeSec, setTimeSec] = useState<number>(0);
 
-    // Estados locales para Adicionales en "Nuevo Item"
+    // Estados locales para Adicionales
     const [newPizzaExtras, setNewPizzaExtras] = useState<{ingrediente_id: string, nombre: string, cantidad: number, nombre_visible: string}[]>([]);
     const [newExtraIng, setNewExtraIng] = useState('');
     const [newExtraQty, setNewExtraQty] = useState('');
     const [newExtraName, setNewExtraName] = useState('');
 
-    // Estados locales para Adicionales en "Editar Item"
     const [editAdiIng, setEditAdiIng] = useState('');
     const [editAdiQty, setEditAdiQty] = useState('');
     const [editAdiName, setEditAdiName] = useState('');
@@ -54,11 +53,24 @@ export const MenuView = ({
         await addP(newPizzaExtras);
         setNewPizzaExtras([]);
         setTimeMin(0); setTimeSec(0);
-        setShowNewForm(false);
+        setShowNewForm(false); // CONTRAER AL GUARDAR (NUEVO)
+    };
+
+    // Wrapper para guardar y contraer
+    const handleSaveEdit = async (id: string) => {
+        await savePizzaChanges(id);
+        setExpandedPizza(null); // CONTRAER AL GUARDAR (EDITAR)
+    };
+
+    // Toggle rápido desde la lista
+    const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
+        e.stopPropagation(); // Evitar que se expanda la tarjeta
+        updateP(id, 'activa', !currentState);
     };
 
     let filteredPizzas = [...pizzas];
     if (typeFilter !== 'all') filteredPizzas = filteredPizzas.filter((p: any) => p.tipo === typeFilter);
+    
     if (sortOrder === 'alpha') filteredPizzas.sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
     else if (sortOrder === 'date') filteredPizzas.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     else if (sortOrder === 'type') filteredPizzas.sort((a: any, b: any) => a.tipo.localeCompare(b.tipo));
@@ -85,11 +97,11 @@ export const MenuView = ({
                     <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`}>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                             
-                            {/* COLUMNA IZQUIERDA: DATOS */}
+                            {/* COLUMNA IZQUIERDA */}
                             <div className="space-y-4">
                                 <h4 className="text-xs font-bold uppercase opacity-50 tracking-wider">Datos Principales</h4>
                                 <div className="flex gap-4">
-                                    <div className={`w-24 h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden cursor-pointer transition-colors ${isDarkMode ? 'border-neutral-700 bg-neutral-800 hover:bg-neutral-700' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
+                                    <div className={`w-24 h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden cursor-pointer transition-colors ${base.uploadBox}`}>
                                         {newPizzaImg ? <img src={newPizzaImg} className="w-full h-full object-cover" /> : <Image className="opacity-20"/>}
                                         <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
                                         {uploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[10px] font-bold">...</div>}
@@ -127,7 +139,7 @@ export const MenuView = ({
                                 </div>
                             </div>
 
-                            {/* COLUMNA DERECHA: RECETA Y EXTRAS */}
+                            {/* COLUMNA DERECHA */}
                             <div className="space-y-4">
                                 {/* 1. RECETA BASE */}
                                 <div className={`p-4 rounded-2xl border ${base.card}`}>
@@ -143,7 +155,6 @@ export const MenuView = ({
                                         <input type="number" value={newPizzaRecipeQty} onChange={e => setNewPizzaRecipeQty(e.target.value)} placeholder="Cant." className={`w-16 p-2 rounded-lg text-xs border outline-none ${base.input}`} />
                                         <button onClick={addToNewPizzaRecipe} className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-500"><Plus size={16}/></button>
                                     </div>
-                                    {/* LISTA INGREDIENTES CON FONDO GRIS OSCURO */}
                                     <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                         {newPizzaIngredients.map((ing: any, idx: number) => (
                                             <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
@@ -183,7 +194,6 @@ export const MenuView = ({
                             </div>
                          </div>
                          <div className={`flex justify-end pt-4 border-t ${base.divider}`}>
-                            {/* BOTÓN CREAR CON COLOR DEL TEMA */}
                             <button 
                                 onClick={handleAddP} 
                                 disabled={!newPizzaName} 
@@ -195,7 +205,7 @@ export const MenuView = ({
                     </div>
                 )}
                 
-                {/* FILTROS DE LISTA */}
+                {/* FILTROS */}
                 <div className={`flex flex-col md:flex-row gap-4 justify-between items-end md:items-center text-xs pt-4 border-t ${base.divider}`}>
                     <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 no-scrollbar">
                         {['all', 'pizza', 'burger', 'other'].map(type => (
@@ -215,7 +225,7 @@ export const MenuView = ({
                 </div>
             </div>
             
-            {/* LISTA DE PLATOS EXISTENTES */}
+            {/* LISTA DE PLATOS */}
             <div className="space-y-4">
                 {filteredPizzas.map((pizza: any) => {
                     const isEditing = edits[pizza.id];
@@ -227,25 +237,34 @@ export const MenuView = ({
                     return (
                         <div key={pizza.id} className={`${base.card} rounded-3xl overflow-hidden border shadow-sm transition-all`}>
                             
-                            {/* VISTA RESUMIDA */}
+                            {/* VISTA RESUMIDA (Tipo Invitado + Toggle Activo) */}
                             <div className={`flex p-4 gap-4 cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`} onClick={() => toggleExpand(pizza.id)}>
-                                <div className={`w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>
+                                <div className={`w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>
                                     {pizza.imagen_url ? <img src={pizza.imagen_url} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center opacity-20"><Image/></div>}
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 flex flex-col justify-between">
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <h3 className="font-bold text-lg leading-tight truncate">{pizza.nombre}</h3>
-                                            <p className={`text-xs mt-0.5 opacity-60`}>{pizza.categoria || 'General'} • {pizza.tipo?.toUpperCase()}</p>
+                                            <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            {expandedPizza === pizza.id ? <ChevronUp size={20} className="opacity-30"/> : <ChevronDown size={20} className="opacity-30"/>}
-                                        </div>
+                                        {/* TOGGLE RÁPIDO ACTIVO */}
+                                        <button 
+                                            onClick={(e) => handleQuickToggle(e, pizza.id, pizza.activa)}
+                                            className={`p-2 rounded-full transition-all ${pizza.activa ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-gray-300 dark:bg-neutral-700 text-gray-500'}`}
+                                            title="Activar / Desactivar"
+                                        >
+                                            <Power size={16} />
+                                        </button>
                                     </div>
-                                    <div className="flex gap-4 mt-2 text-xs font-mono opacity-70 items-center">
-                                        <span className={`px-1.5 py-0.5 rounded ${stockReal > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>Stock: {stockReal}</span>
-                                        <span className="flex items-center gap-1"><Clock size={10}/> {Math.floor(pizza.tiempo_coccion/60)}m {pizza.tiempo_coccion%60}s</span>
-                                        <span className={`px-1.5 py-0.5 rounded font-bold ${pizza.activa ? 'text-green-500' : 'text-red-500'}`}>{pizza.activa ? 'ACTIVO' : 'INACTIVO'}</span>
+                                    
+                                    <div className="flex gap-3 mt-2 text-xs items-center">
+                                        <div className={`flex items-center gap-1 font-mono px-2 py-1 rounded ${stockReal > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                            <span className="font-bold">{stockReal}</span> <span className="opacity-70">disp.</span>
+                                        </div>
+                                        <span className="flex items-center gap-1 opacity-60"><Clock size={12}/> {Math.floor(pizza.tiempo_coccion/60)}m {pizza.tiempo_coccion%60}s</span>
+                                        <span className="opacity-40">•</span>
+                                        <span className="opacity-60 uppercase font-bold text-[10px]">{pizza.tipo}</span>
                                     </div>
                                 </div>
                             </div>
@@ -314,7 +333,7 @@ export const MenuView = ({
                                                     {currentRecipe.map((r: any, idx: number) => {
                                                         const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
                                                         return (
-                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
+                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 border-b last:border-0 border-dashed ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
                                                                 <span className={currentTheme.text}>{ing?.nombre || r.nombre}</span>
                                                                 <div className="flex items-center gap-3">
                                                                     <span className={`font-mono opacity-50 px-1.5 py-0.5 rounded border border-current ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>{r.cantidad_requerida} {ing?.unidad}</span>
@@ -361,7 +380,7 @@ export const MenuView = ({
                                                     {currentAdicionales.map((adi: any) => {
                                                         const ingName = ingredients.find((i:any) => i.id === adi.ingrediente_id)?.nombre || '???';
                                                         return (
-                                                            <div key={adi.id} className="flex justify-between items-center text-xs p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg mb-1">
+                                                            <div key={adi.id} className={`flex justify-between items-center text-xs p-2 rounded-lg mb-1 bg-purple-500/10 border border-purple-500/20`}>
                                                                 <div>
                                                                     <span className="font-bold block">{adi.nombre_visible}</span>
                                                                     <span className="opacity-50 text-[10px]">Descuenta: {adi.cantidad_requerida} de {ingName}</span>
@@ -410,7 +429,7 @@ export const MenuView = ({
                                             {hasChanges && (
                                                 <>
                                                     <button onClick={() => cancelChanges(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
-                                                    <button onClick={() => savePizzaChanges(pizza.id)} className="px-6 py-3 rounded-xl bg-green-600 text-white font-bold shadow-lg flex items-center gap-2 hover:bg-green-500 text-sm"><Save size={18}/> Guardar Cambios</button>
+                                                    <button onClick={() => handleSaveEdit(pizza.id)} className="px-6 py-3 rounded-xl bg-green-600 text-white font-bold shadow-lg flex items-center gap-2 hover:bg-green-500 text-sm"><Save size={18}/> Guardar Cambios</button>
                                                 </>
                                             )}
                                         </div>
