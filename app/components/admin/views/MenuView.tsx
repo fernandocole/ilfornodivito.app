@@ -54,7 +54,6 @@ export const MenuView = ({
 
     // Wrapper para guardar nuevo item con sus extras
     const handleAddP = async () => {
-        // Pasamos los extras a la función addP del padre (que ya actualizamos)
         await addP(newPizzaExtras);
         setNewPizzaExtras([]);
         setTimeMin(0); setTimeSec(0);
@@ -86,9 +85,9 @@ export const MenuView = ({
                     </button>
                 </div>
 
-                {/* --- FORMULARIO NUEVO ITEM --- */}
+                {/* --- FORMULARIO NUEVO ITEM (FONDO OSCURO CORREGIDO) --- */}
                 {showNewForm && (
-                    <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border ${base.innerCard} shadow-xl`}>
+                    <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border shadow-xl bg-white dark:bg-neutral-950 dark:border-neutral-800`}>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                             
                             {/* COLUMNA IZQUIERDA: DATOS */}
@@ -223,6 +222,11 @@ export const MenuView = ({
                     const hasChanges = isEditing && (Object.keys(isEditing).length > 0);
                     const currentAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
                     
+                    // Calculo de tiempo visual
+                    const tTotal = isEditing?.tiempo_coccion ?? pizza.tiempo_coccion;
+                    const displayMin = Math.floor(tTotal / 60);
+                    const displaySec = tTotal % 60;
+                    
                     return (
                         <div key={pizza.id} className={`${base.card} rounded-3xl overflow-hidden border shadow-sm transition-all`}>
                             
@@ -249,9 +253,9 @@ export const MenuView = ({
                                 </div>
                             </div>
 
-                            {/* ZONA EXPANDIDA DE EDICIÓN */}
+                            {/* ZONA EXPANDIDA DE EDICIÓN (FONDO OSCURO CORREGIDO) */}
                             {expandedPizza === pizza.id && (
-                                <div className={`p-5 border-t ${base.divider} bg-neutral-50/50 dark:bg-black/20 space-y-6 animate-in slide-in-from-top-2`}>
+                                <div className={`p-5 border-t ${base.divider} bg-white/50 dark:bg-neutral-950 space-y-6 animate-in slide-in-from-top-2`}>
                                     
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* COLUMNA 1 */}
@@ -423,3 +427,12 @@ export const MenuView = ({
         </div>
     );
 };
+
+// --- ICON COMPONENT (Check) ---
+function Check({ size, className }: { size?: number, className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+    )
+}
