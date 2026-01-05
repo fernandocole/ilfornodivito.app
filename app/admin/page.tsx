@@ -27,7 +27,7 @@ const supabase = createClient(
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
-        reader.onload = (event) => { const img = new Image(); img.src = event.target?.result as string; img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 1600; const MAX_HEIGHT = 1600; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx?.drawImage(img, 0, 0, width, height); canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.8); }; }; reader.onerror = (error) => reject(error);
+        reader.onload = (event) => { const img = new Image(); img.src = event.target?.result as string; img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const MAX_HEIGHT = 800; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx?.drawImage(img, 0, 0, width, height); canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.8); }; }; reader.onerror = (error) => reject(error);
     });
 };
 
@@ -76,12 +76,12 @@ export default function AdminPage() {
   
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS PERSISTENTES DE VISTAS (Paso 7) ---
+  // --- ESTADOS PERSISTENTES DE VISTAS ---
   const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
   const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
   const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
 
-  // NUEVO: AVATARES Y ZOOM
+  // --- NUEVO: AVATARES Y ZOOM ---
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
   const [imageToView, setImageToView] = useState<string | null>(null);
 
@@ -136,11 +136,12 @@ export default function AdminPage() {
   const [confirmPass, setConfirmPass] = useState('');
   const [tempMotivos, setTempMotivos] = useState<Record<string, string>>({});
 
+  // ESTADOS LIMPIEZA AVANZADA
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({
       from: '',
       to: '',
-      status: 'all',
+      status: 'all', // 'all', 'pendiente', 'cocinando', 'entregado'
       restock: false
   });
 
@@ -182,9 +183,7 @@ export default function AdminPage() {
       uploadBox: "bg-neutral-100 border-neutral-300 hover:bg-neutral-200"
   };
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [view]);
+  useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
   useEffect(() => {
     const session = localStorage.getItem('vito-admin-session');
@@ -272,8 +271,7 @@ export default function AdminPage() {
     }
     if (Notification.permission === 'granted') new Notification(title, { body, icon: '/icon.png' });
   };
-  
-  // (Continúa en PARTE 2...)
+
   const handleLocalEdit = (id: string, field: string, value: any) => { setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } })); };
   const updateLocalRecipe = (pizzaId: string, newRecipeList: any[]) => { handleLocalEdit(pizzaId, 'local_recipe', newRecipeList); };
   
@@ -298,7 +296,7 @@ export default function AdminPage() {
       allPendientes.forEach((pedido: any) => { const pizza = allPizzas.find((p:any) => p.id === pedido.pizza_id); const porcionesEntera = pizza?.porciones_individuales || porcionesDefault; const fraccion = pedido.cantidad_porciones / porcionesEntera; const recetaPizza = allRecetas.filter((r: any) => r.pizza_id === pedido.pizza_id); recetaPizza.forEach((item: any) => { const cantidadNecesaria = item.cantidad_requerida * fraccion; reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + cantidadNecesaria; }); }); setReservedState(reservedStock);
       const updates = allPizzas.map(async (p) => { const pRecetas = allRecetas.filter((r: any) => r.pizza_id === p.id); let stockVirtual = 999; if (pRecetas.length > 0) { let minPizzasPosibles = Infinity; pRecetas.forEach((item: any) => { const ing = allIngs.find((i: any) => i.id === item.ingrediente_id); if (ing) { const fisico = ing.cantidad_disponible || 0; const reservado = reservedStock[ing.id] || 0; const disponibleReal = Math.max(0, fisico - reservado); const posibles = item.cantidad_requerida > 0 ? Math.floor(disponibleReal / item.cantidad_requerida) : 999; if (posibles < minPizzasPosibles) minPizzasPosibles = posibles; } else { minPizzasPosibles = 0; } }); stockVirtual = minPizzasPosibles === Infinity ? 0 : minPizzasPosibles; } else { stockVirtual = 0; } if (p.stock !== stockVirtual) { await supabase.from('menu_pizzas').update({ stock: stockVirtual }).eq('id', p.id); } }); await Promise.all(updates); const { data: refreshedPizzas } = await supabase.from('menu_pizzas').select('*').order('created_at', { ascending: true }); if(refreshedPizzas) setPizzas(refreshedPizzas);
   };
-
+  
   const cargarDatos = async () => {
     const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString();
     const [piz, ing, rec, ped, inv, conf, val, logsData] = await Promise.all([
@@ -315,6 +313,7 @@ export default function AdminPage() {
     if(ped.data) { setPedidos(ped.data); setInvitadosCount(new Set(ped.data.map((p: any) => p.invitado_nombre.toLowerCase())).size); if (prevPedidosCount.current > 0 && ped.data.length > prevPedidosCount.current) { sendAdminNotification("¡Nuevos Pedidos!", `Han entrado ${ped.data.length - prevPedidosCount.current} pedidos nuevos.`); } prevPedidosCount.current = ped.data.length; }
     if(inv.data) {
         setInvitadosDB(inv.data);
+        // CREAR MAPA DE AVATARES
         const map: Record<string, string> = {};
         inv.data.forEach((u: any) => {
             if(u.avatar_url) map[u.nombre.toLowerCase().trim()] = u.avatar_url;
@@ -323,7 +322,6 @@ export default function AdminPage() {
     } 
     if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) actualizarStockGlobal();
   };
-
   // --- ACTIONS ---
   const eliminarUnidad = async (nombre: string, pizzaId: string) => {
       const userOrders = pedidos.filter(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId);
@@ -817,6 +815,28 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* --- GLOBAL IMAGE ZOOM MODAL (ADMIN) --- */}
+      {imageToView && (
+        <div 
+            className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" 
+            onClick={() => setImageToView(null)}
+        >
+            <button 
+                onClick={(e) => { e.stopPropagation(); setImageToView(null); }} 
+                className="absolute top-28 right-5 text-white/70 hover:text-white z-[10000] drop-shadow-md"
+            >
+                <X size={24}/>
+            </button>
+            
+            <img 
+                src={imageToView} 
+                alt="Zoom" 
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain select-none" 
+                onClick={(e) => e.stopPropagation()} 
+            />
+        </div>
+      )}
+
       {/* CONTENIDO PRINCIPAL */}
       <div className="relative z-10 pt-24 px-4 pb-36">
         
@@ -870,7 +890,7 @@ export default function AdminPage() {
             {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
             {view === 'usuarios' && <UsersView base={base} newGuestName={newGuestName} setNewGuestName={setNewGuestName} addU={addU} allUsersList={allUsersList} resetU={resetU} toggleB={toggleB} eliminarUsuario={eliminarUsuario} tempMotivos={tempMotivos} setTempMotivos={setTempMotivos} guardarMotivo={guardarMotivo} currentTheme={currentTheme} resetAllOrders={resetAllOrders} avatarMap={avatarMap} setImageToView={setImageToView} />}
             {view === 'config' && <ConfigView base={base} config={config} setConfig={setConfig} isDarkMode={isDarkMode} resetAllOrders={resetAllOrders} newPass={newPass} setNewPass={setNewPass} confirmPass={confirmPass} setConfirmPass={setConfirmPass} changePass={changePass} currentTheme={currentTheme} sessionDuration={sessionDuration} setSessionDuration={setSessionDuration} />}
-            {view === 'logs' && <LogsView base={base} logs={logs} isDarkMode={isDarkMode} currentTheme={currentTheme} updateLogName={updateLogName} onRefresh={refreshLogsOnly} />}
+            {view === 'logs' && <LogsView base={base} logs={logs} isDarkMode={isDarkMode} currentTheme={currentTheme} updateLogName={updateLogName} onRefresh={refreshLogsOnly} avatarMap={avatarMap} setImageToView={setImageToView} />}
         </main>
       </div>
 

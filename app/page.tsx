@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
-  User, ArrowRight, Lock, AlertCircle, X, PartyPopper, Star, Clock, Eye, EyeOff, Crown, Shield, Globe, Languages, Camera, Edit2 
+  User, ArrowRight, Lock, AlertCircle, X, PartyPopper, Star, Clock, Eye, EyeOff, Crown, Shield, Globe, Languages, Camera, Edit2, Check
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -80,6 +80,7 @@ export default function VitoPizzaApp() {
   const [flowStep, setFlowStep] = useState<'loading' | 'landing' | 'name' | 'password' | 'onboarding' | 'app'>('loading');
   const [guestPassInput, setGuestPassInput] = useState(''); 
   const [showPassword, setShowPassword] = useState(true); 
+
   const [loadingConfig, setLoadingConfig] = useState(true); 
   const [accessGranted, setAccessGranted] = useState(false);
   const [dbPass, setDbPass] = useState('');
@@ -88,6 +89,7 @@ export default function VitoPizzaApp() {
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [ingredientes, setIngredientes] = useState<any[]>([]);
   const [recetas, setRecetas] = useState<any[]>([]);
+
   const [allRatings, setAllRatings] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   
@@ -108,30 +110,25 @@ export default function VitoPizzaApp() {
   const [orderToConfirm, setOrderToConfirm] = useState<any>(null);
   const [showLateRatingModal, setShowLateRatingModal] = useState(false);
   const [lateRatingPizza, setLateRatingPizza] = useState<any>(null);
-  
   const processedOrderIds = useRef<Set<string>>(new Set());
   const [zoomLevel, setZoomLevel] = useState(0);
   const DESC_SIZES = ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl'];
   const STOCK_SIZES = ['text-[10px]', 'text-xs', 'text-sm', 'text-base', 'text-lg'];
-
   const [isDarkMode, setIsDarkMode] = useState(false); 
   const [currentTheme, setCurrentTheme] = useState(THEMES[1]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
-
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onlineUsers, setOnlineUsers] = useState(1);
-  
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [pizzaToRate, setPizzaToRate] = useState<any>(null);
   const [ratingValue, setRatingValue] = useState(0);
   const [commentValue, setCommentValue] = useState('');
   const [misValoraciones, setMisValoraciones] = useState<string[]>([]);
   const [autoTranslations, setAutoTranslations] = useState<Record<string, Record<string, { name: string, desc: string }>>>({});
-  
   const [translatedWelcome, setTranslatedWelcome] = useState<string>('');
   const [config, setConfig] = useState<{
       porciones_por_pizza: number;
@@ -147,26 +144,22 @@ export default function VitoPizzaApp() {
       modo_estricto: false, 
       categoria_activa: '["General"]' 
   });
-
   const [invitadosActivos, setInvitadosActivos] = useState(0);
   const [miHistorial, setMiHistorial] = useState<Record<string, { pendientes: number, comidos: number, enHorno: number, enEspera: number }>>({});
   const [invitadosLista, setInvitadosLista] = useState<any[]>([]);
   const [usuarioBloqueado, setUsuarioBloqueado] = useState(false);
   const [motivoBloqueo, setMotivoBloqueo] = useState('');
-
   const prevPendingPerPizzaRef = useRef<Record<string, number>>({});
   const prevComidosPerPizza = useRef<Record<string, number>>({});
   const prevCocinandoData = useRef<Record<string, boolean>>({});
   const firstLoadRef = useRef(true);
 
-  // ... (Sigue en BLOQUE 2)
   // --- HELPERS ---
   const mostrarMensaje = (txt: string, tipo: 'info' | 'alerta' | 'exito') => { setMensaje({ texto: txt, tipo }); if (tipo !== 'alerta') { setTimeout(() => setMensaje(null), 2500); } };
   const getBtnClass = (isActive: boolean) => { const common = "p-2 rounded-full transition-all duration-300 flex items-center justify-center bg-transparent "; const scale = isActive ? "scale-110" : "hover:scale-105"; return isDarkMode ? `${common} ${scale} ${isActive ? 'text-white' : 'text-neutral-200 hover:text-white'}` : `${common} ${scale} ${isActive ? 'text-black' : 'text-neutral-800 hover:text-black'}`; };
   const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60); const s = seconds % 60; return `${m}:${s.toString().padStart(2, '0')}`; };
   const getWelcomeMessage = () => { let msg = translatedWelcome || config.mensaje_bienvenida; if (!msg) return null; msg = msg.replace(/\[nombre\]/gi, nombreInvitado || 'Invitado'); msg = msg.replace(/\[fecha\]/gi, new Date().toLocaleDateString()); msg = msg.replace(/\[hora\]/gi, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); msg = msg.replace(/\[pizzas\]/gi, String(pizzas.length)); return msg; };
   const getEmptyStateMessage = () => { switch(filter) { case 'stock': return t.emptyStock; case 'top': return t.emptyTop; case 'to_rate': return t.emptyRate; case 'ordered': return t.emptyOrdered; case 'new': return t.emptyNew; default: return t.emptyDefault; } };
-  
   const sendNotification = async (title: string, body: string, url: string = '/') => { if ('serviceWorker' in navigator && navigator.serviceWorker.ready) { try { const registration = await navigator.serviceWorker.ready; registration.showNotification(title, { body: body, icon: '/icon.png', badge: '/icon.png', vibrate: [200, 100, 200], data: { url: url } } as any); return; } catch (e) { console.log("Fallo SW notification, intentando standard"); } } if (Notification.permission === 'granted') { new Notification(title, { body, icon: '/icon.png' }); } };
   const toggleNotificaciones = () => { if (notifEnabled) { setNotifEnabled(false); localStorage.setItem('vito-notif-enabled', 'false'); mostrarMensaje(t.notifOff, 'info'); } else { Notification.requestPermission().then(perm => { if (perm === 'granted') { setNotifEnabled(true); localStorage.setItem('vito-notif-enabled', 'true'); mostrarMensaje(t.notifOn, 'info'); sendNotification("Il Forno di Vito", "¡Notificaciones activadas correctamente!"); } else { alert("Activa las notificaciones en la configuración de tu navegador."); } }); } };
   const toggleDarkMode = () => { const n = !isDarkMode; setIsDarkMode(n); localStorage.setItem('vito-dark-mode', String(n)); };
@@ -178,13 +171,68 @@ export default function VitoPizzaApp() {
   const rotarIdioma = () => { let nextLang: LangType = 'es'; if (lang === 'es') nextLang = 'en'; else if (lang === 'en') nextLang = 'it'; setLang(nextLang); localStorage.setItem('vito-lang', nextLang); };
   const translateText = async (text: string, targetLang: string) => { try { const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURI(text)}`); const data = await response.json(); return data[0][0][0] || text; } catch (error) { console.error("Error traduciendo", error); return text; } };
 
-  // --- LOGIC ---
   const logoutGuest = () => { if(confirm("¿Cerrar sesión?")) { localStorage.removeItem('vito-guest-name'); localStorage.removeItem('vito-guest-pass-val'); localStorage.removeItem('vito-guest-avatar'); setNombreInvitado(''); setAvatarPreview(null); setFlowStep('landing'); } };
   const checkOnboarding = () => { const seen = localStorage.getItem('vito-onboarding-seen'); if (!seen) { setFlowStep('onboarding'); setShowOnboarding(true); } else { setFlowStep('app'); } };
   
-  const handleAvatarSelect = async (e: any) => { const file = e.target.files?.[0]; if (!file) return; try { const compressed = await compressImage(file); setAvatarFile(new File([compressed], file.name, { type: 'image/jpeg' })); setAvatarPreview(URL.createObjectURL(compressed)); } catch(err) { alert("Error al procesar la imagen."); } };
-  const handleUpdateAvatar = async (e: any) => { const file = e.target.files?.[0]; if (!file) return; setUploadingAvatar(true); try { const compressed = await compressImage(file); const newFile = new File([compressed], file.name, { type: 'image/jpeg' }); const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`; const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, newFile); if (!uploadError) { const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName); const newUrl = data.publicUrl; await supabase.from('lista_invitados').update({ avatar_url: newUrl }).ilike('nombre', nombreInvitado.trim()); setAvatarPreview(newUrl); localStorage.setItem('vito-guest-avatar', newUrl); setImageToView(null); mostrarMensaje("Foto actualizada", "exito"); } else { throw uploadError; } } catch(err) { alert("Error subiendo la foto."); } finally { setUploadingAvatar(false); } };
-  const handleNameSubmit = async () => { if (!nombreInvitado.trim()) return alert("Por favor ingresa tu nombre"); setUploadingAvatar(true); let publicAvatarUrl = null; try { localStorage.setItem('vito-guest-name', nombreInvitado); if (avatarFile) { const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`; const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, avatarFile); if (!uploadError) { const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName); publicAvatarUrl = data.publicUrl; localStorage.setItem('vito-guest-avatar', publicAvatarUrl); } } const { data: existingUser } = await supabase.from('lista_invitados').select('id, avatar_url').ilike('nombre', nombreInvitado.trim()).maybeSingle(); if (existingUser) { const urlToUpdate = publicAvatarUrl || existingUser.avatar_url; await supabase.from('lista_invitados').update({ avatar_url: urlToUpdate, origen: 'web' }).eq('id', existingUser.id); if (!publicAvatarUrl && existingUser.avatar_url) { setAvatarPreview(existingUser.avatar_url); localStorage.setItem('vito-guest-avatar', existingUser.avatar_url); } } else { await supabase.from('lista_invitados').insert([{ nombre: nombreInvitado.trim(), avatar_url: publicAvatarUrl, origen: 'web' }]); } } catch (e) { console.error(e); } finally { setUploadingAvatar(false); if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); } } };
+  // --- FOTO PERFIL Y ACTUALIZACIÓN ---
+  const handleAvatarSelect = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+          const compressed = await compressImage(file);
+          const finalFile = new File([compressed], file.name, { type: 'image/jpeg' });
+          
+          if (flowStep === 'app') {
+              // Si estamos en la app (logueado), subir directo
+              await uploadAvatarToDb(finalFile);
+          } else {
+              // Si estamos en login, solo preview
+              setAvatarFile(finalFile);
+              setAvatarPreview(URL.createObjectURL(compressed));
+          }
+      } catch(err) {
+          alert("Error al procesar la imagen.");
+      }
+      e.target.value = ''; // Reset input
+  };
+
+  const uploadAvatarToDb = async (fileToUpload: File) => {
+      setUploadingAvatar(true);
+      try {
+          const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`;
+          const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, fileToUpload);
+          
+          if (!uploadError) {
+              const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName);
+              const newUrl = data.publicUrl;
+              await supabase.from('lista_invitados').update({ avatar_url: newUrl }).ilike('nombre', nombreInvitado.trim());
+              setAvatarPreview(newUrl);
+              localStorage.setItem('vito-guest-avatar', newUrl);
+              mostrarMensaje("Foto actualizada", "exito");
+              setImageToView(null);
+          } else throw uploadError;
+      } catch(err) { alert("Error subiendo la foto."); } finally { setUploadingAvatar(false); }
+  };
+
+  const handleNameSubmit = async () => { 
+      if (!nombreInvitado.trim()) return alert("Por favor ingresa tu nombre"); 
+      setUploadingAvatar(true); let publicAvatarUrl = null;
+      try {
+          localStorage.setItem('vito-guest-name', nombreInvitado);
+          if (avatarFile) {
+              const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`;
+              const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, avatarFile);
+              if (!uploadError) { const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName); publicAvatarUrl = data.publicUrl; localStorage.setItem('vito-guest-avatar', publicAvatarUrl); }
+          }
+          const { data: existingUser } = await supabase.from('lista_invitados').select('id, avatar_url').ilike('nombre', nombreInvitado.trim()).maybeSingle();
+          if (existingUser) {
+              const urlToUpdate = publicAvatarUrl || existingUser.avatar_url;
+              await supabase.from('lista_invitados').update({ avatar_url: urlToUpdate, origen: 'web' }).eq('id', existingUser.id);
+              if (!publicAvatarUrl && existingUser.avatar_url) { setAvatarPreview(existingUser.avatar_url); localStorage.setItem('vito-guest-avatar', existingUser.avatar_url); }
+          } else { await supabase.from('lista_invitados').insert([{ nombre: nombreInvitado.trim(), avatar_url: publicAvatarUrl, origen: 'web' }]); }
+      } catch (e) { console.error(e); } finally { setUploadingAvatar(false); if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); } }
+  };
+
   const handlePasswordSubmit = () => { if (guestPassInput === dbPass) { localStorage.setItem('vito-guest-pass-val', guestPassInput); checkOnboarding(); } else { alert("Contraseña incorrecta"); } };
   const handleInstallClick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') setIsInstallable(false); setDeferredPrompt(null); };
   const completeOnboarding = () => { localStorage.setItem('vito-onboarding-seen', 'true'); setShowOnboarding(false); setFlowStep('app'); };
@@ -207,10 +255,6 @@ export default function VitoPizzaApp() {
   const mySummary = useMemo(() => { let t = 0, w = 0, o = 0, r = 0; pizzas.forEach(p => { const h = miHistorial[p.id]; if(h) { w += h.enEspera; o += h.enHorno; r += h.comidos; t += h.pendientes; } }); return { total: t, wait: w, oven: o, ready: r }; }, [miHistorial, pizzas]);
   const currentBannerText = useMemo(() => { if (cargando) return t.loading; const msgs = [`${invitadosActivos} ${t.status}`]; const pData = pizzas.map(p => { const vals = allRatings.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? vals.reduce((a, b) => a + b.rating, 0) / vals.length : 0; const totS = (p.stock || 0) * (p.porciones_individuales || config.porciones_por_pizza); const us = pedidos.filter(ped => ped.pizza_id === p.id).reduce((a, c) => a + c.cantidad_porciones, 0); let dName = p.nombre; if (lang !== 'es' && autoTranslations[p.id] && autoTranslations[p.id][lang]) { dName = autoTranslations[p.id][lang].name; } return { ...p, displayName: dName, stock: Math.max(0, totS - us), avg, count: vals.length }; }); pData.forEach(p => { if (p.stock === 0) msgs.push(`${p.displayName}: ${t.soldOut} 😭`); else if (p.stock <= 5) msgs.push(`${t.only} ${p.stock} ${t.of} ${p.displayName}! 🏃`); }); const best = [...pData].sort((a,b) => b.avg - a.avg)[0]; if (best && best.avg >= 4.5 && best.count > 1) msgs.push(`${t.topRated} ${best.displayName} (${best.avg.toFixed(1)}★)`); const pop = pData.filter(p => p.avg > 4.7 && p.count > 2); pop.forEach(p => msgs.push(`${t.hotPick} ${p.displayName}!`)); return msgs[bannerIndex % msgs.length]; }, [invitadosActivos, pizzas, pedidos, bannerIndex, cargando, t, config, allRatings, lang, autoTranslations]);
 
-  useEffect(() => { if (enrichedPizzas.length === 0) return; let lista = [...enrichedPizzas]; if (!activeCategories.includes('Todas')) { lista = lista.filter(p => activeCategories.includes(p.categoria || 'General')); } if (filter !== 'all') { lista = lista.filter(p => { if (filter === 'top') return p.avgRating && parseFloat(p.avgRating) >= 4.5; if (filter === 'to_rate') return miHistorial[p.id]?.comidos > 0 && !misValoraciones.includes(p.id); if (filter === 'ordered') return (miHistorial[p.id]?.pendientes > 0 || miHistorial[p.id]?.comidos > 0); if (filter === 'new') return (!miHistorial[p.id]?.pendientes && !miHistorial[p.id]?.comidos); if (filter === 'stock') return p.stockRestante > 0; return true; }); } lista.sort((a, b) => { const aReady = !a.cocinando && a.totalPendientes >= a.target; const bReady = !b.cocinando && b.totalPendientes >= b.target; if (aReady && !bReady) return -1; if (!aReady && bReady) return 1; if (a.cocinando && !b.cocinando) return -1; if (!a.cocinando && b.cocinando) return 1; const aStock = a.stockRestante > 0; const bStock = b.stockRestante > 0; if (aStock && !bStock) return -1; if (!aStock && bStock) return 1; if (orden === 'ranking') return b.sortRating - a.sortRating; if (orden === 'nombre') return a.displayName.localeCompare(b.displayName); const aActive = a.ocupadasActual; const bActive = b.ocupadasActual; if (aActive !== bActive) return bActive - aActive; return a.displayName.localeCompare(b.displayName); }); setOrderedIds(lista.map(p => p.id)); }, [orden, filter, pizzas.length, JSON.stringify(pizzas.map(p => ({ id: p.id, cocinando: p.cocinando, stock: p.stock }))), JSON.stringify(activeCategories)]);
-  useEffect(() => { const params = new URLSearchParams(window.location.search); const rateId = params.get('rate'); if (rateId && enrichedPizzas.length > 0) { const pizza = enrichedPizzas.find(p => p.id === rateId) || pizzas.find(p => p.id === rateId); if (pizza) { openRating(pizza); const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname; window.history.replaceState({ path: newUrl }, '', newUrl); } } }, [enrichedPizzas]); 
-  useEffect(() => { if(!nombreInvitado || !pizzas.length) return; const storedQueue = localStorage.getItem('vito-review-queue'); let queue: { id: string, pizzaId: string, triggerAt: number }[] = storedQueue ? JSON.parse(storedQueue) : []; let queueChanged = false; const delivered = pedidos.filter(p => p.invitado_nombre === nombreInvitado && p.estado === 'entregado'); delivered.forEach(p => { if (misValoraciones.includes(p.pizza_id)) return; if (queue.find(q => q.id === p.id)) return; if (processedOrderIds.current.has(p.id)) return; processedOrderIds.current.add(p.id); if (!firstLoadRef.current) { const delayMins = config.tiempo_recordatorio_minutos || 10; const triggerTime = Date.now() + (delayMins * 60000); queue.push({ id: p.id, pizzaId: p.pizza_id, triggerAt: triggerTime }); queueChanged = true; } }); if (queueChanged) localStorage.setItem('vito-review-queue', JSON.stringify(queue)); const checker = setInterval(() => { const currentQueueStr = localStorage.getItem('vito-review-queue'); if (!currentQueueStr) return; let currentQueue = JSON.parse(currentQueueStr); const now = Date.now(); const toNotify: any[] = []; const remaining: any[] = []; currentQueue.forEach((item: any) => { if (misValoraciones.includes(item.pizzaId)) return; if (now >= item.triggerAt) toNotify.push(item); else remaining.push(item); }); if (toNotify.length > 0) { const item = toNotify[0]; const pz = enrichedPizzas.find(z => z.id === item.pizzaId) || pizzas.find(z => z.id === item.pizzaId); if (pz) { const delay = config.tiempo_recordatorio_minutos || 10; const nameToShow = pz.displayName || pz.nombre; sendNotification(t.rateQuestion + " " + nameToShow + "?", `${t.ateTimeAgo} ${delay} ${t.minAgo}`, `/?rate=${pz.id}`); setLateRatingPizza(pz); setShowLateRatingModal(true); } localStorage.setItem('vito-review-queue', JSON.stringify(remaining)); } }, 10000); return () => clearInterval(checker); }, [pedidos, nombreInvitado, pizzas, enrichedPizzas, misValoraciones, config]);
-
   const openRating = (p: any) => { setPizzaToRate(p); setRatingValue(0); setCommentValue(''); setShowRatingModal(true); };
   const submitRating = async () => { if (ratingValue === 0) return; await supabase.from('valoraciones').insert([{ pizza_id: pizzaToRate.id, invitado_nombre: nombreInvitado, rating: ratingValue, comentario: commentValue }]); setMisValoraciones(prev => [...prev, pizzaToRate.id]); const storedQueue = localStorage.getItem('vito-review-queue'); if (storedQueue) { const queue = JSON.parse(storedQueue); const newQueue = queue.filter((item: any) => item.pizzaId !== pizzaToRate.id); localStorage.setItem('vito-review-queue', JSON.stringify(newQueue)); } setShowRatingModal(false); setShowLateRatingModal(false); fetchDatos(); };
   async function modificarPedido(p: any, acc: 'sumar' | 'restar') { if (!nombreInvitado.trim()) { alert(t.errorName); return; } if (usuarioBloqueado) { alert(`${t.blocked}: ${motivoBloqueo || ''}`); return; } if (acc === 'sumar') { if (p.stockRestante <= 0) { alert("Sin stock :("); return; } setOrderToConfirm(p); } else { if (p.cocinando) { mostrarMensaje(`🔥 ¡Ya está ${getCookingText(p.tipo)}! No se puede cancelar.`, 'alerta'); return; } const pending = pedidos.filter(pd => pd.pizza_id === p.id && pd.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim() && pd.estado === 'pendiente'); if (pending.length > 0) { const toDelete = pending[0]; const newPedidos = pedidos.filter(x => x.id !== toDelete.id); setPedidos(newPedidos); mostrarMensaje(`${t.successCancel} ${p.displayName}`, 'info'); await supabase.from('pedidos').delete().eq('id', toDelete.id); fetchDatos(); } } }
@@ -218,7 +262,6 @@ export default function VitoPizzaApp() {
 
   const base = isDarkMode ? { bg: "bg-neutral-950", text: "text-white", subtext: "text-neutral-500", card: "bg-neutral-900 border-neutral-800", innerCard: "bg-white/5 border border-white/5 text-neutral-300", input: "bg-transparent text-white placeholder-neutral-600", inputContainer: "bg-neutral-900 border-neutral-800", buttonSec: "bg-black/20 text-white hover:bg-black/40 border-white/10", progressBg: "bg-black/40 border-white/5", progressTrack: "bg-neutral-800 border-black/50", badge: "bg-white/10 text-white border border-white/10", activeChip: "bg-white text-black font-bold", inactiveChip: "bg-neutral-900 text-neutral-400 border border-neutral-800", bar: "bg-neutral-900/50 backdrop-blur-md border-white/10 shadow-lg text-white border" } : { bg: "bg-gray-50", text: "text-gray-900", subtext: "text-gray-500", card: "bg-white border-gray-200 shadow-md", innerCard: "bg-neutral-100 border border-transparent text-gray-600", input: "bg-transparent text-gray-900 placeholder-gray-400", inputContainer: "bg-white border-gray-200 shadow-sm", buttonSec: "bg-gray-200 text-gray-600 hover:text-black border-gray-300", progressBg: "bg-gray-100 border-gray-200", progressTrack: "bg-gray-300 border-white/50", badge: "bg-black/5 text-gray-700 border border-black/5", activeChip: "bg-black text-white font-bold", inactiveChip: "bg-white text-gray-500 border border-gray-200", bar: "bg-white/50 backdrop-blur-md border-gray-300 shadow-lg text-gray-900 border" };
 
-  // ... (Sigue en BLOQUE 3)
   if (loadingConfig || flowStep === 'loading') {
       return (<div className={`min-h-screen flex items-center justify-center p-4 ${base.bg}`}><div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isDarkMode ? 'border-white' : 'border-black'}`}></div></div>);
   }
@@ -248,7 +291,7 @@ export default function VitoPizzaApp() {
       );
   }
 
-  // 2. NAME INPUT CON FOTO (Click en foto reabre selector)
+  // 2. NAME INPUT CON FOTO
   if (flowStep === 'name') {
       return (
           <div className={`min-h-screen flex items-center justify-center p-4 ${base.bg}`}>
@@ -325,7 +368,6 @@ export default function VitoPizzaApp() {
         THEMES={THEMES} changeTheme={changeTheme} isInstallable={isInstallable} handleInstallClick={handleInstallClick}
         onLogout={logoutGuest}
         userAvatar={avatarPreview}
-        // Pasamos la función para abrir el zoom con la foto de perfil al tocar el avatar de la TopBar
         onAvatarClick={() => setImageToView(avatarPreview)}
       />
 
@@ -374,21 +416,21 @@ export default function VitoPizzaApp() {
         {imageToView && (
             <div 
                 className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center p-4 animate-in fade-in duration-200 backdrop-blur-sm"
-                onClick={() => setImageToView(null)} // Click en fondo cierra
+                onClick={() => setImageToView(null)}
             >
-                {/* BOTÓN CERRAR FLOTANTE Y GRANDE */}
+                {/* BOTÓN CERRAR FLOTANTE BAJO Y SIMPLE */}
                 <button 
                     onClick={(e) => { e.stopPropagation(); setImageToView(null); }} 
-                    className="absolute top-6 right-6 z-[10000] bg-white/10 text-white p-3 rounded-full hover:bg-white/20 active:scale-90 transition-all border border-white/20 shadow-xl backdrop-blur-md"
+                    className="absolute top-28 right-5 text-white/70 hover:text-white z-[10000] drop-shadow-md"
                 >
-                    <X size={32} />
+                    <X size={24} />
                 </button>
                 
                 <img 
                     src={imageToView} 
                     alt="Zoom" 
                     className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain mb-8 select-none" 
-                    onClick={(e) => e.stopPropagation()} // Click en imagen NO cierra
+                    onClick={(e) => e.stopPropagation()} 
                 />
                 
                 {/* BOTÓN CAMBIAR FOTO (Solo si es mi foto) */}
@@ -399,10 +441,10 @@ export default function VitoPizzaApp() {
                                 <span className="animate-pulse">Subiendo...</span>
                             ) : (
                                 <>
-                                    <Edit2 size={24}/> Cambiar / Recortar Foto
+                                    <Edit2 size={24}/> Cambiar Foto
                                 </>
                             )}
-                            <input type="file" accept="image/*" className="hidden" onChange={handleUpdateAvatar} disabled={uploadingAvatar} />
+                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} disabled={uploadingAvatar} />
                         </label>
                     </div>
                 )}
