@@ -47,6 +47,7 @@ const getCookingText = (tipo: string, context: 'ing' | 'ed' | 'short' = 'ing') =
     return isPizza ? 'cocinando' : 'preparando';
 };
 
+// Helper simple para compresión (sin recorte manual)
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
@@ -59,12 +60,15 @@ const compressImage = async (file: File): Promise<Blob> => {
                 canvas.width = TARGET_SIZE; 
                 canvas.height = TARGET_SIZE; 
                 const ctx = canvas.getContext('2d');
-                if (!ctx) { reject(new Error('Canvas context error')); return; }
+                if (!ctx) { reject(new Error('Canvas error')); return; }
+                
+                // Recorte central automático
                 const minSide = Math.min(img.width, img.height);
                 const sx = (img.width - minSide) / 2;
                 const sy = (img.height - minSide) / 2;
+                
                 ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, TARGET_SIZE, TARGET_SIZE);
-                canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.8); 
+                canvas.toBlob((blob) => { if(blob) resolve(blob); else reject(new Error('Canvas error')); }, 'image/jpeg', 0.85); 
             }; 
         }; 
         reader.onerror = (error) => reject(error);
@@ -155,13 +159,82 @@ export default function VitoPizzaApp() {
   const firstLoadRef = useRef(true);
 
   // --- HELPERS ---
-  const mostrarMensaje = (txt: string, tipo: 'info' | 'alerta' | 'exito') => { setMensaje({ texto: txt, tipo }); if (tipo !== 'alerta') { setTimeout(() => setMensaje(null), 2500); } };
-  const getBtnClass = (isActive: boolean) => { const common = "p-2 rounded-full transition-all duration-300 flex items-center justify-center bg-transparent "; const scale = isActive ? "scale-110" : "hover:scale-105"; return isDarkMode ? `${common} ${scale} ${isActive ? 'text-white' : 'text-neutral-200 hover:text-white'}` : `${common} ${scale} ${isActive ? 'text-black' : 'text-neutral-800 hover:text-black'}`; };
-  const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60); const s = seconds % 60; return `${m}:${s.toString().padStart(2, '0')}`; };
-  const getWelcomeMessage = () => { let msg = translatedWelcome || config.mensaje_bienvenida; if (!msg) return null; msg = msg.replace(/\[nombre\]/gi, nombreInvitado || 'Invitado'); msg = msg.replace(/\[fecha\]/gi, new Date().toLocaleDateString()); msg = msg.replace(/\[hora\]/gi, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); msg = msg.replace(/\[pizzas\]/gi, String(pizzas.length)); return msg; };
-  const getEmptyStateMessage = () => { switch(filter) { case 'stock': return t.emptyStock; case 'top': return t.emptyTop; case 'to_rate': return t.emptyRate; case 'ordered': return t.emptyOrdered; case 'new': return t.emptyNew; default: return t.emptyDefault; } };
-  const sendNotification = async (title: string, body: string, url: string = '/') => { if ('serviceWorker' in navigator && navigator.serviceWorker.ready) { try { const registration = await navigator.serviceWorker.ready; registration.showNotification(title, { body: body, icon: '/icon.png', badge: '/icon.png', vibrate: [200, 100, 200], data: { url: url } } as any); return; } catch (e) { console.log("Fallo SW notification, intentando standard"); } } if (Notification.permission === 'granted') { new Notification(title, { body, icon: '/icon.png' }); } };
-  const toggleNotificaciones = () => { if (notifEnabled) { setNotifEnabled(false); localStorage.setItem('vito-notif-enabled', 'false'); mostrarMensaje(t.notifOff, 'info'); } else { Notification.requestPermission().then(perm => { if (perm === 'granted') { setNotifEnabled(true); localStorage.setItem('vito-notif-enabled', 'true'); mostrarMensaje(t.notifOn, 'info'); sendNotification("Il Forno di Vito", "¡Notificaciones activadas correctamente!"); } else { alert("Activa las notificaciones en la configuración de tu navegador."); } }); } };
+  const mostrarMensaje = (txt: string, tipo: 'info' | 'alerta' | 'exito') => { 
+      setMensaje({ texto: txt, tipo }); 
+      if (tipo !== 'alerta') { setTimeout(() => setMensaje(null), 2500); } 
+  };
+
+  const getBtnClass = (isActive: boolean) => {
+      const common = "p-2 rounded-full transition-all duration-300 flex items-center justify-center bg-transparent ";
+      const scale = isActive ? "scale-110" : "hover:scale-105";
+      return isDarkMode 
+          ? `${common} ${scale} ${isActive ? 'text-white' : 'text-neutral-200 hover:text-white'}` 
+          : `${common} ${scale} ${isActive ? 'text-black' : 'text-neutral-800 hover:text-black'}`; 
+  };
+
+  const formatTime = (seconds: number) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getWelcomeMessage = () => {
+      let msg = translatedWelcome || config.mensaje_bienvenida;
+      if (!msg) return null;
+      msg = msg.replace(/\[nombre\]/gi, nombreInvitado || 'Invitado');
+      msg = msg.replace(/\[fecha\]/gi, new Date().toLocaleDateString());
+      msg = msg.replace(/\[hora\]/gi, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      msg = msg.replace(/\[pizzas\]/gi, String(pizzas.length));
+      return msg;
+  };
+
+  const getEmptyStateMessage = () => {
+    switch(filter) {
+        case 'stock': return t.emptyStock;
+        case 'top': return t.emptyTop;
+        case 'to_rate': return t.emptyRate;
+        case 'ordered': return t.emptyOrdered;
+        case 'new': return t.emptyNew;
+        default: return t.emptyDefault;
+    }
+  };
+
+  const sendNotification = async (title: string, body: string, url: string = '/') => {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            registration.showNotification(title, {
+                body: body, icon: '/icon.png', badge: '/icon.png', vibrate: [200, 100, 200], data: { url: url }
+            } as any);
+            return;
+        } catch (e) {
+            console.log("Fallo SW notification");
+        }
+    }
+    if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/icon.png' });
+    }
+  };
+
+  const toggleNotificaciones = () => { 
+      if (notifEnabled) { 
+          setNotifEnabled(false); 
+          localStorage.setItem('vito-notif-enabled', 'false'); 
+          mostrarMensaje(t.notifOff, 'info'); 
+      } else { 
+          Notification.requestPermission().then(perm => { 
+              if (perm === 'granted') { 
+                  setNotifEnabled(true); 
+                  localStorage.setItem('vito-notif-enabled', 'true'); 
+                  mostrarMensaje(t.notifOn, 'info'); 
+                  sendNotification("Il Forno di Vito", "¡Notificaciones activadas correctamente!");
+              } else { 
+                  alert("Activa las notificaciones en la configuración de tu navegador."); 
+              } 
+          }); 
+      } 
+  };
+
   const toggleDarkMode = () => { const n = !isDarkMode; setIsDarkMode(n); localStorage.setItem('vito-dark-mode', String(n)); };
   const toggleOrden = () => { const n = orden === 'estado' ? 'nombre' : (orden === 'nombre' ? 'ranking' : 'estado'); setOrden(n); localStorage.setItem('vito-orden', n); };
   const toggleCompact = () => { const n = !isCompact; setIsCompact(n); localStorage.setItem('vito-compact', String(n)); };
@@ -169,32 +242,55 @@ export default function VitoPizzaApp() {
   const changeFilter = (f: any) => { setFilter(f); localStorage.setItem('vito-filter', f); };
   const changeTheme = (t: typeof THEMES[0]) => { setCurrentTheme(t); localStorage.setItem('vito-guest-theme', t.name); setShowThemeSelector(false); };
   const rotarIdioma = () => { let nextLang: LangType = 'es'; if (lang === 'es') nextLang = 'en'; else if (lang === 'en') nextLang = 'it'; setLang(nextLang); localStorage.setItem('vito-lang', nextLang); };
-  const translateText = async (text: string, targetLang: string) => { try { const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURI(text)}`); const data = await response.json(); return data[0][0][0] || text; } catch (error) { console.error("Error traduciendo", error); return text; } };
+  
+  const translateText = async (text: string, targetLang: string) => {
+    try {
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURI(text)}`);
+        const data = await response.json();
+        return data[0][0][0] || text;
+    } catch (error) {
+        console.error("Error traduciendo", error);
+        return text;
+    }
+  };
 
-  const logoutGuest = () => { if(confirm("¿Cerrar sesión?")) { localStorage.removeItem('vito-guest-name'); localStorage.removeItem('vito-guest-pass-val'); localStorage.removeItem('vito-guest-avatar'); setNombreInvitado(''); setAvatarPreview(null); setFlowStep('landing'); } };
+  const logoutGuest = () => {
+    if(confirm("¿Cerrar sesión?")) {
+        localStorage.removeItem('vito-guest-name');
+        localStorage.removeItem('vito-guest-pass-val');
+        localStorage.removeItem('vito-guest-avatar'); 
+        setNombreInvitado('');
+        setAvatarPreview(null);
+        setFlowStep('landing');
+    }
+  };
+
   const checkOnboarding = () => { const seen = localStorage.getItem('vito-onboarding-seen'); if (!seen) { setFlowStep('onboarding'); setShowOnboarding(true); } else { setFlowStep('app'); } };
   
-  // --- FOTO PERFIL Y ACTUALIZACIÓN ---
+  // --- FOTO PERFIL ---
   const handleAvatarSelect = async (e: any) => {
       const file = e.target.files?.[0];
       if (!file) return;
       try {
           const compressed = await compressImage(file);
           const finalFile = new File([compressed], file.name, { type: 'image/jpeg' });
+          const previewUrl = URL.createObjectURL(compressed);
           
           if (flowStep === 'app') {
-              // Si estamos en la app (logueado), subir directo
+              // Actualización directa si ya está logueado
               await uploadAvatarToDb(finalFile);
           } else {
-              // Si estamos en login, solo preview
+              // Previsualización si es login
               setAvatarFile(finalFile);
-              setAvatarPreview(URL.createObjectURL(compressed));
+              setAvatarPreview(previewUrl);
           }
       } catch(err) {
           alert("Error al procesar la imagen.");
       }
-      e.target.value = ''; // Reset input
+      e.target.value = '';
   };
+
+  const handleUpdateAvatar = (e: any) => { handleAvatarSelect(e); };
 
   const uploadAvatarToDb = async (fileToUpload: File) => {
       setUploadingAvatar(true);
@@ -211,26 +307,36 @@ export default function VitoPizzaApp() {
               mostrarMensaje("Foto actualizada", "exito");
               setImageToView(null);
           } else throw uploadError;
-      } catch(err) { alert("Error subiendo la foto."); } finally { setUploadingAvatar(false); }
+      } catch(err) {
+          alert("Error subiendo la foto.");
+      } finally {
+          setUploadingAvatar(false);
+      }
   };
 
   const handleNameSubmit = async () => { 
       if (!nombreInvitado.trim()) return alert("Por favor ingresa tu nombre"); 
-      setUploadingAvatar(true); let publicAvatarUrl = null;
+      setUploadingAvatar(true); 
+      let publicAvatarUrl = null;
       try {
           localStorage.setItem('vito-guest-name', nombreInvitado);
+          
           if (avatarFile) {
               const fileName = `avatars/${Date.now()}_${nombreInvitado.replace(/\s+/g, '_')}.jpg`;
               const { error: uploadError } = await supabase.storage.from('pizzas').upload(fileName, avatarFile);
               if (!uploadError) { const { data } = supabase.storage.from('pizzas').getPublicUrl(fileName); publicAvatarUrl = data.publicUrl; localStorage.setItem('vito-guest-avatar', publicAvatarUrl); }
           }
+
           const { data: existingUser } = await supabase.from('lista_invitados').select('id, avatar_url').ilike('nombre', nombreInvitado.trim()).maybeSingle();
           if (existingUser) {
               const urlToUpdate = publicAvatarUrl || existingUser.avatar_url;
               await supabase.from('lista_invitados').update({ avatar_url: urlToUpdate, origen: 'web' }).eq('id', existingUser.id);
               if (!publicAvatarUrl && existingUser.avatar_url) { setAvatarPreview(existingUser.avatar_url); localStorage.setItem('vito-guest-avatar', existingUser.avatar_url); }
           } else { await supabase.from('lista_invitados').insert([{ nombre: nombreInvitado.trim(), avatar_url: publicAvatarUrl, origen: 'web' }]); }
-      } catch (e) { console.error(e); } finally { setUploadingAvatar(false); if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); } }
+      } catch (e) { console.error(e); } finally {
+          setUploadingAvatar(false);
+          if (dbPass && dbPass !== '') { setFlowStep('password'); } else { checkOnboarding(); }
+      }
   };
 
   const handlePasswordSubmit = () => { if (guestPassInput === dbPass) { localStorage.setItem('vito-guest-pass-val', guestPassInput); checkOnboarding(); } else { alert("Contraseña incorrecta"); } };
@@ -238,22 +344,269 @@ export default function VitoPizzaApp() {
   const completeOnboarding = () => { localStorage.setItem('vito-onboarding-seen', 'true'); setShowOnboarding(false); setFlowStep('app'); };
 
   // --- USE EFFECTS ---
-  useEffect(() => { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(error => console.log('SW error:', error)); } const hasSeenOnboarding = localStorage.getItem('vito-onboarding-seen'); if (!hasSeenOnboarding) setShowOnboarding(true); const savedName = localStorage.getItem('vito-guest-name'); if (savedName) setNombreInvitado(savedName); const savedAvatar = localStorage.getItem('vito-guest-avatar'); if (savedAvatar) setAvatarPreview(savedAvatar); const savedTheme = localStorage.getItem('vito-guest-theme'); if (savedTheme) setCurrentTheme(THEMES.find(t => t.name === savedTheme) || THEMES[1]); else setCurrentTheme(THEMES[1]); const savedMode = localStorage.getItem('vito-dark-mode'); if (savedMode !== null) setIsDarkMode(savedMode === 'true'); else setIsDarkMode(false); const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType); const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true); const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre'); const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true'); const savedFilter = localStorage.getItem('vito-filter'); if (savedFilter) setFilter(savedFilter as any); const savedPass = localStorage.getItem('vito-guest-pass-val'); if(savedPass) setGuestPassInput(savedPass); const interval = setInterval(() => { setBannerIndex((prev) => prev + 1); }, 3000); const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); }; window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt); const presenceChannel = supabase.channel('online-users'); presenceChannel.on('presence', { event: 'sync' }, () => { const state = presenceChannel.presenceState(); const count = Object.values(state).reduce((acc: number, presences: any) => { const isGuest = presences.some((p: any) => p.role === 'guest'); return acc + (isGuest ? 1 : 0); }, 0); setOnlineUsers(count); }).subscribe(async (status) => { if (status === 'SUBSCRIBED') { await presenceChannel.track({ online_at: new Date().toISOString(), role: 'guest' }); } }); return () => { clearInterval(interval); window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); supabase.removeChannel(presenceChannel); }; }, []);
-  useEffect(() => { const configChannel = supabase.channel('config-realtime').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_dia' }, (payload: any) => { if (payload.new) { setConfig(prev => ({ ...prev, ...payload.new })); const newPass = payload.new.password_invitados; const storedPass = localStorage.getItem('vito-guest-pass-val'); if (newPass && newPass !== '' && newPass !== storedPass) { alert("La contraseña de acceso ha cambiado. Por favor ingresa nuevamente."); setFlowStep('password'); setGuestPassInput(''); setDbPass(newPass); } } }).subscribe(); return () => { supabase.removeChannel(configChannel); }; }, []);
-  useEffect(() => { const logAccess = async () => { let sessionId = localStorage.getItem('vito-session-id'); if (!sessionId) { sessionId = crypto.randomUUID(); localStorage.setItem('vito-session-id', sessionId); } const userAgent = navigator.userAgent; let deviceType = "Desktop"; if (/Mobi|Android/i.test(userAgent)) deviceType = "Mobile"; let browserName = "Unknown"; if (userAgent.indexOf("Chrome") > -1) browserName = "Chrome"; else if (userAgent.indexOf("Safari") > -1) browserName = "Safari"; else if (userAgent.indexOf("Firefox") > -1) browserName = "Firefox"; let ipData = { ip: null, city: null, country_name: null }; try { const res = await fetch('https://ipapi.co/json/'); if (res.ok) ipData = await res.json(); } catch (e) {} const { data: existingLog } = await supabase.from('access_logs').select('id').eq('session_id', sessionId).gt('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()).single(); if (!existingLog) { await supabase.from('access_logs').insert([{ session_id: sessionId, device: deviceType, browser: browserName, ip: ipData.ip, ciudad: ipData.city, pais: ipData.country_name, invitado_nombre: nombreInvitado || null }]); } else { if (nombreInvitado) { await supabase.from('access_logs').update({ invitado_nombre: nombreInvitado }).eq('id', existingLog.id); } } }; logAccess(); }, [nombreInvitado]);
-  useEffect(() => { if (lang === 'es' || pizzas.length === 0) return; const translateAll = async () => { const newTrans = { ...autoTranslations }; let hasChanges = false; for (const p of pizzas) { if (!newTrans[p.id]) newTrans[p.id] = {}; if (!newTrans[p.id][lang]) { const tName = await translateText(p.nombre, lang); const tDesc = await translateText(p.descripcion || "", lang); newTrans[p.id][lang] = { name: tName, desc: tDesc }; hasChanges = true; } } if (hasChanges) setAutoTranslations(newTrans); if (config.mensaje_bienvenida) { let safeMsg = config.mensaje_bienvenida.replace(/\n/g, ' XX_BR_XX ').replace(/\[nombre\]/gi, 'XX_NAME_XX').replace(/\[fecha\]/gi, 'XX_DATE_XX').replace(/\[hora\]/gi, 'XX_TIME_XX').replace(/\[pizzas\]/gi, 'XX_COUNT_XX'); let tMsg = await translateText(safeMsg, lang); tMsg = tMsg.replace(/XX_BR_XX/gi, '\n').replace(/XX _ BR _ XX/gi, '\n').replace(/XX_NAME_XX/gi, '[nombre]').replace(/XX _ NAME _ XX/gi, '[nombre]').replace(/XX_DATE_XX/gi, '[fecha]').replace(/XX _ DATE _ XX/gi, '[fecha]').replace(/XX_TIME_XX/gi, '[hora]').replace(/XX _ TIME _ XX/gi, '[hora]').replace(/XX_COUNT_XX/gi, '[pizzas]').replace(/XX _ COUNT _ XX/gi, '[pizzas]'); setTranslatedWelcome(tMsg); } }; translateAll(); }, [lang, pizzas, autoTranslations, config.mensaje_bienvenida]);
-  
-  const fetchConfig = useCallback(async () => { const { data } = await supabase.from('configuracion_dia').select('*').single(); if (data) { setConfig(data); setDbPass(data.password_invitados || ''); } const savedName = localStorage.getItem('vito-guest-name'); const savedPass = localStorage.getItem('vito-guest-pass-val'); if (savedName && (!data?.password_invitados || savedPass === data.password_invitados)) { setNombreInvitado(savedName); setFlowStep('app'); } else { setFlowStep('landing'); } setLoadingConfig(false); }, []);
+  useEffect(() => {
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(error => console.log('SW error:', error)); }
+    const hasSeenOnboarding = localStorage.getItem('vito-onboarding-seen');
+    if (!hasSeenOnboarding) setShowOnboarding(true);
+    
+    // Datos guardados
+    const savedName = localStorage.getItem('vito-guest-name'); if (savedName) setNombreInvitado(savedName);
+    const savedAvatar = localStorage.getItem('vito-guest-avatar'); if (savedAvatar) setAvatarPreview(savedAvatar);
+    
+    // Config visual
+    const savedTheme = localStorage.getItem('vito-guest-theme'); if (savedTheme) setCurrentTheme(THEMES.find(t => t.name === savedTheme) || THEMES[1]); else setCurrentTheme(THEMES[1]);
+    const savedMode = localStorage.getItem('vito-dark-mode'); if (savedMode !== null) setIsDarkMode(savedMode === 'true'); else setIsDarkMode(false);
+    const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType);
+    const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true);
+    
+    const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre');
+    const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true');
+    const savedFilter = localStorage.getItem('vito-filter'); if (savedFilter) setFilter(savedFilter as any);
+    const savedPass = localStorage.getItem('vito-guest-pass-val'); if(savedPass) setGuestPassInput(savedPass);
+
+    const interval = setInterval(() => { setBannerIndex((prev) => prev + 1); }, 3000);
+    const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const presenceChannel = supabase.channel('online-users');
+    presenceChannel.on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const count = Object.values(state).reduce((acc: number, presences: any) => {
+            const isGuest = presences.some((p: any) => p.role === 'guest');
+            return acc + (isGuest ? 1 : 0);
+        }, 0);
+        setOnlineUsers(count);
+      }).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ online_at: new Date().toISOString(), role: 'guest' });
+        }
+      });
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        supabase.removeChannel(presenceChannel);
+    };
+  }, []);
+
+  useEffect(() => {
+    const configChannel = supabase.channel('config-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_dia' }, (payload: any) => {
+            if (payload.new) {
+                setConfig(prev => ({ ...prev, ...payload.new }));
+                const newPass = payload.new.password_invitados;
+                const storedPass = localStorage.getItem('vito-guest-pass-val');
+                if (newPass && newPass !== '' && newPass !== storedPass) {
+                    alert("La contraseña de acceso ha cambiado. Por favor ingresa nuevamente.");
+                    setFlowStep('password'); setGuestPassInput(''); setDbPass(newPass);
+                }
+            }
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(configChannel); };
+  }, []);
+
+  useEffect(() => {
+      const logAccess = async () => {
+          let sessionId = localStorage.getItem('vito-session-id');
+          if (!sessionId) { sessionId = crypto.randomUUID(); localStorage.setItem('vito-session-id', sessionId); }
+          const userAgent = navigator.userAgent; let deviceType = "Desktop"; if (/Mobi|Android/i.test(userAgent)) deviceType = "Mobile";
+          let browserName = "Unknown"; if (userAgent.indexOf("Chrome") > -1) browserName = "Chrome"; else if (userAgent.indexOf("Safari") > -1) browserName = "Safari"; else if (userAgent.indexOf("Firefox") > -1) browserName = "Firefox";
+          let ipData = { ip: null, city: null, country_name: null }; try { const res = await fetch('https://ipapi.co/json/'); if (res.ok) ipData = await res.json(); } catch (e) {}
+          const { data: existingLog } = await supabase.from('access_logs').select('id').eq('session_id', sessionId).gt('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()).single();
+          if (!existingLog) { await supabase.from('access_logs').insert([{ session_id: sessionId, device: deviceType, browser: browserName, ip: ipData.ip, ciudad: ipData.city, pais: ipData.country_name, invitado_nombre: nombreInvitado || null }]); } 
+          else { if (nombreInvitado) { await supabase.from('access_logs').update({ invitado_nombre: nombreInvitado }).eq('id', existingLog.id); } }
+      };
+      logAccess();
+  }, [nombreInvitado]);
+
+  useEffect(() => {
+      if (lang === 'es' || pizzas.length === 0) return;
+      const translateAll = async () => {
+          const newTrans = { ...autoTranslations };
+          let hasChanges = false;
+          for (const p of pizzas) {
+              if (!newTrans[p.id]) newTrans[p.id] = {};
+              if (!newTrans[p.id][lang]) {
+                  const tName = await translateText(p.nombre, lang);
+                  const tDesc = await translateText(p.descripcion || "", lang);
+                  newTrans[p.id][lang] = { name: tName, desc: tDesc };
+                  hasChanges = true;
+              }
+          }
+          if (hasChanges) setAutoTranslations(newTrans);
+          if (config.mensaje_bienvenida) {
+              let safeMsg = config.mensaje_bienvenida.replace(/\n/g, ' XX_BR_XX ').replace(/\[nombre\]/gi, 'XX_NAME_XX').replace(/\[fecha\]/gi, 'XX_DATE_XX').replace(/\[hora\]/gi, 'XX_TIME_XX').replace(/\[pizzas\]/gi, 'XX_COUNT_XX');
+              let tMsg = await translateText(safeMsg, lang);
+              tMsg = tMsg.replace(/XX_BR_XX/gi, '\n').replace(/XX _ BR _ XX/gi, '\n').replace(/XX_NAME_XX/gi, '[nombre]').replace(/XX _ NAME _ XX/gi, '[nombre]').replace(/XX_DATE_XX/gi, '[fecha]').replace(/XX _ DATE _ XX/gi, '[fecha]').replace(/XX_TIME_XX/gi, '[hora]').replace(/XX _ TIME _ XX/gi, '[hora]').replace(/XX_COUNT_XX/gi, '[pizzas]').replace(/XX _ COUNT _ XX/gi, '[pizzas]');
+              setTranslatedWelcome(tMsg);
+          }
+      };
+      translateAll();
+  }, [lang, pizzas, autoTranslations, config.mensaje_bienvenida]);
+
+  const fetchConfig = useCallback(async () => {
+    const { data } = await supabase.from('configuracion_dia').select('*').single();
+    if (data) { setConfig(data); setDbPass(data.password_invitados || ''); }
+    const savedName = localStorage.getItem('vito-guest-name');
+    const savedPass = localStorage.getItem('vito-guest-pass-val');
+    if (savedName && (!data?.password_invitados || savedPass === data.password_invitados)) { setNombreInvitado(savedName); setFlowStep('app'); } else { setFlowStep('landing'); }
+    setLoadingConfig(false);
+  }, []);
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
-  const fetchDatos = useCallback(async () => { const now = new Date(); const corte = new Date(now); if (now.getHours() < 6) corte.setDate(corte.getDate() - 1); corte.setHours(6, 0, 0, 0); const iso = corte.toISOString(); const [dPed, dPiz, dInv, dVal, dRec, dIng] = await Promise.all([ supabase.from('pedidos').select('*').gte('created_at', iso), supabase.from('menu_pizzas').select('*').eq('activa', true).order('created_at'), supabase.from('lista_invitados').select('*'), supabase.from('valoraciones').select('*').gte('created_at', iso), supabase.from('recetas').select('*'), supabase.from('ingredientes').select('*') ]); if (dIng.data) setIngredientes(dIng.data); if (dRec.data) setRecetas(dRec.data); if (dVal.data) setAllRatings(dVal.data); if (dInv.data) { setInvitadosLista(dInv.data); if (nombreInvitado) { const me = dInv.data.find(u => u.nombre.toLowerCase() === nombreInvitado.toLowerCase().trim()); if (me) { if (me.bloqueado) { setUsuarioBloqueado(true); setMotivoBloqueo(me.motivo_bloqueo || ''); } else { setUsuarioBloqueado(false); setMotivoBloqueo(''); } if (me.avatar_url && me.avatar_url !== avatarPreview) { setAvatarPreview(me.avatar_url); localStorage.setItem('vito-guest-avatar', me.avatar_url); } } } } if (dPiz.data && dPed.data) { setPedidos(dPed.data); setInvitadosActivos(new Set(dPed.data.map(p => p.invitado_nombre.toLowerCase().trim())).size); setPizzas(dPiz.data); if (nombreInvitado) { const mV = dVal.data?.filter(v => v.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (mV) setMisValoraciones(mV.map(v => v.pizza_id)); const mis = dPed.data.filter(p => p.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim()); const res: any = {}; dPiz.data.forEach(pz => { const m = mis.filter(p => p.pizza_id === pz.id); const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); const enHornoCount = m.filter(p => p.estado === 'cocinando').reduce((acc, x) => acc + x.cantidad_porciones, 0); const enEsperaCount = m.filter(p => p.estado === 'pendiente').reduce((acc, x) => acc + x.cantidad_porciones, 0); const pTotal = enHornoCount + enEsperaCount; res[pz.id] = { pendientes: pTotal, comidos: c, enHorno: enHornoCount, enEspera: enEsperaCount }; if (!firstLoadRef.current && flowStep === 'app') { if (!(prevCocinandoData.current[pz.id]) && pz.cocinando && pTotal) { sendNotification(pz.tipo === 'pizza' ? "¡Al Horno!" : "¡En Marcha!", `Tu ${pz.nombre} está ${getCookingText(pz.tipo, 'ing')}.`); } if (prevCocinandoData.current[pz.id] && !pz.cocinando && (prevPendingPerPizzaRef.current[pz.id] > 0)) { mostrarMensaje(`¡Tu ${pz.nombre} ESTÁ LISTA!`, 'exito'); sendNotification(`¡${pz.nombre} Lista!`, `¡Ya está ${getCookingText(pz.tipo, 'ed')}!`, `/?rate=${pz.id}`); } } prevCocinandoData.current[pz.id] = pz.cocinando; prevComidosPerPizza.current[pz.id] = c; prevPendingPerPizzaRef.current[pz.id] = pTotal; }); setMiHistorial(res); if (firstLoadRef.current) firstLoadRef.current = false; } } setCargando(false); }, [nombreInvitado, flowStep, t]); 
+  const fetchDatos = useCallback(async () => {
+    const now = new Date(); const corte = new Date(now); if (now.getHours() < 6) corte.setDate(corte.getDate() - 1); corte.setHours(6, 0, 0, 0); const iso = corte.toISOString();
+    
+    const [dPed, dPiz, dInv, dVal, dRec, dIng] = await Promise.all([
+        supabase.from('pedidos').select('*').gte('created_at', iso),
+        supabase.from('menu_pizzas').select('*').eq('activa', true).order('created_at'),
+        supabase.from('lista_invitados').select('*'),
+        supabase.from('valoraciones').select('*').gte('created_at', iso),
+        supabase.from('recetas').select('*'),
+        supabase.from('ingredientes').select('*')
+    ]);
+
+    if (dIng.data) setIngredientes(dIng.data);
+    if (dRec.data) setRecetas(dRec.data);
+    if (dVal.data) setAllRatings(dVal.data);
+    if (dInv.data) { 
+        setInvitadosLista(dInv.data); 
+        if (nombreInvitado) {
+            const me = dInv.data.find(u => u.nombre.toLowerCase() === nombreInvitado.toLowerCase().trim());
+            if (me) {
+                if (me.bloqueado) { setUsuarioBloqueado(true); setMotivoBloqueo(me.motivo_bloqueo || ''); } 
+                else { setUsuarioBloqueado(false); setMotivoBloqueo(''); }
+                if (me.avatar_url && me.avatar_url !== avatarPreview) {
+                    setAvatarPreview(me.avatar_url);
+                    localStorage.setItem('vito-guest-avatar', me.avatar_url);
+                }
+            }
+        }
+    }
+    if (dPiz.data && dPed.data) {
+      setPedidos(dPed.data); setInvitadosActivos(new Set(dPed.data.map(p => p.invitado_nombre.toLowerCase().trim())).size); setPizzas(dPiz.data);
+      if (nombreInvitado) {
+        const mV = dVal.data?.filter(v => v.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase()); if (mV) setMisValoraciones(mV.map(v => v.pizza_id));
+        const mis = dPed.data.filter(p => p.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim());
+        const res: any = {}; 
+        
+        dPiz.data.forEach(pz => {
+             const m = mis.filter(p => p.pizza_id === pz.id); 
+             const c = m.filter(p => p.estado === 'entregado').reduce((acc, x) => acc + x.cantidad_porciones, 0); 
+             const enHornoCount = m.filter(p => p.estado === 'cocinando').reduce((acc, x) => acc + x.cantidad_porciones, 0);
+             const enEsperaCount = m.filter(p => p.estado === 'pendiente').reduce((acc, x) => acc + x.cantidad_porciones, 0);
+             const pTotal = enHornoCount + enEsperaCount;
+             res[pz.id] = { pendientes: pTotal, comidos: c, enHorno: enHornoCount, enEspera: enEsperaCount };
+             if (!firstLoadRef.current && flowStep === 'app') { 
+                 if (!(prevCocinandoData.current[pz.id]) && pz.cocinando && pTotal) { sendNotification(pz.tipo === 'pizza' ? "¡Al Horno!" : "¡En Marcha!", `Tu ${pz.nombre} está ${getCookingText(pz.tipo, 'ing')}.`); }
+                 if (prevCocinandoData.current[pz.id] && !pz.cocinando && (prevPendingPerPizzaRef.current[pz.id] > 0)) { mostrarMensaje(`¡Tu ${pz.nombre} ESTÁ LISTA!`, 'exito'); sendNotification(`¡${pz.nombre} Lista!`, `¡Ya está ${getCookingText(pz.tipo, 'ed')}!`, `/?rate=${pz.id}`); }
+             } 
+             prevCocinandoData.current[pz.id] = pz.cocinando; prevComidosPerPizza.current[pz.id] = c; prevPendingPerPizzaRef.current[pz.id] = pTotal;
+        });
+        setMiHistorial(res); if (firstLoadRef.current) firstLoadRef.current = false;
+      }
+    }
+    setCargando(false);
+  }, [nombreInvitado, flowStep, t]); 
   useEffect(() => { fetchDatos(); const c = supabase.channel('app-realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => fetchDatos()).subscribe(); return () => { supabase.removeChannel(c); }; }, [fetchDatos]);
 
-  const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas') return ['Todas']; if (Array.isArray(parsed)) return parsed; return ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
-  const enrichedPizzas = useMemo(() => { const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; return pizzas.map(pizza => { const target = pizza.porciones_individuales || config.porciones_por_pizza; const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); const remainder = (pen % target === 0) ? 0 : (target - (pen % target)); const dbStockWhole = pizza.stock || 0; const stockRestante = (dbStockWhole * target) + remainder; let missingIngredients: string[] = []; if (stockRestante <= 0 && recetas.length > 0 && ingredientes.length > 0) { const myRecipe = recetas.filter(r => r.pizza_id === pizza.id); myRecipe.forEach(r => { const ing = ingredientes.find(i => i.id === r.ingrediente_id); if (ing && ing.cantidad_disponible < r.cantidad_requerida) { missingIngredients.push(ing.nombre); } }); } const rats = allRatings.filter(r => r.pizza_id === pizza.id); const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; const sortR = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length) : globalAvg; let displayName = pizza.nombre; let displayDesc = pizza.descripcion; if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } return { ...pizza, displayName, displayDesc, stockRestante, dbStockWhole, remainder, missingIngredients, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen }; }); }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes]);
+  // --- MEMOS ---
+  const activeCategories: string[] = useMemo(() => { 
+      try { 
+          const parsed = JSON.parse(config.categoria_activa);
+          if (parsed === 'Todas') return ['Todas'];
+          if (Array.isArray(parsed)) return parsed;
+          return ['General']; 
+      } catch { return ['General']; } 
+  }, [config.categoria_activa]);
+
+  const enrichedPizzas = useMemo(() => { 
+      const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
+      return pizzas.map(pizza => { 
+          const target = pizza.porciones_individuales || config.porciones_por_pizza; 
+          const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
+          const remainder = (pen % target === 0) ? 0 : (target - (pen % target));
+          const dbStockWhole = pizza.stock || 0;
+          const stockRestante = (dbStockWhole * target) + remainder; 
+          let missingIngredients: string[] = [];
+          if (stockRestante <= 0 && recetas.length > 0 && ingredientes.length > 0) {
+              const myRecipe = recetas.filter(r => r.pizza_id === pizza.id);
+              myRecipe.forEach(r => { const ing = ingredientes.find(i => i.id === r.ingrediente_id); if (ing && ing.cantidad_disponible < r.cantidad_requerida) { missingIngredients.push(ing.nombre); } });
+          }
+          const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
+          const avg = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length).toFixed(1) : null; 
+          const sortR = rats.length > 0 ? (rats.reduce((a, b) => a + b.rating, 0) / rats.length) : globalAvg; 
+          
+          let displayName = pizza.nombre; let displayDesc = pizza.descripcion; 
+          if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } 
+          return { ...pizza, displayName, displayDesc, stockRestante, dbStockWhole, remainder, missingIngredients, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen }; 
+      }); 
+  }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes]);
+
   const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.enEspera > 0; if(summarySheet === 'oven') return h.enHorno > 0; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.enEspera; else if(summarySheet === 'oven') count = h.enHorno; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
   const mySummary = useMemo(() => { let t = 0, w = 0, o = 0, r = 0; pizzas.forEach(p => { const h = miHistorial[p.id]; if(h) { w += h.enEspera; o += h.enHorno; r += h.comidos; t += h.pendientes; } }); return { total: t, wait: w, oven: o, ready: r }; }, [miHistorial, pizzas]);
   const currentBannerText = useMemo(() => { if (cargando) return t.loading; const msgs = [`${invitadosActivos} ${t.status}`]; const pData = pizzas.map(p => { const vals = allRatings.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? vals.reduce((a, b) => a + b.rating, 0) / vals.length : 0; const totS = (p.stock || 0) * (p.porciones_individuales || config.porciones_por_pizza); const us = pedidos.filter(ped => ped.pizza_id === p.id).reduce((a, c) => a + c.cantidad_porciones, 0); let dName = p.nombre; if (lang !== 'es' && autoTranslations[p.id] && autoTranslations[p.id][lang]) { dName = autoTranslations[p.id][lang].name; } return { ...p, displayName: dName, stock: Math.max(0, totS - us), avg, count: vals.length }; }); pData.forEach(p => { if (p.stock === 0) msgs.push(`${p.displayName}: ${t.soldOut} 😭`); else if (p.stock <= 5) msgs.push(`${t.only} ${p.stock} ${t.of} ${p.displayName}! 🏃`); }); const best = [...pData].sort((a,b) => b.avg - a.avg)[0]; if (best && best.avg >= 4.5 && best.count > 1) msgs.push(`${t.topRated} ${best.displayName} (${best.avg.toFixed(1)}★)`); const pop = pData.filter(p => p.avg > 4.7 && p.count > 2); pop.forEach(p => msgs.push(`${t.hotPick} ${p.displayName}!`)); return msgs[bannerIndex % msgs.length]; }, [invitadosActivos, pizzas, pedidos, bannerIndex, cargando, t, config, allRatings, lang, autoTranslations]);
+
+  // CORRECCIÓN PRINCIPAL: Dependencias completas en el ordenamiento
+  useEffect(() => {
+    if (!enrichedPizzas || enrichedPizzas.length === 0) {
+        if(orderedIds.length > 0) setOrderedIds([]);
+        return;
+    }
+    
+    let lista = [...enrichedPizzas];
+
+    // Filtrado por categoría
+    if (!activeCategories.includes('Todas')) {
+        lista = lista.filter(p => activeCategories.includes(p.categoria || 'General'));
+    }
+
+    // Filtrado por estado
+    if (filter !== 'all') {
+        lista = lista.filter(p => {
+            if (filter === 'top') return p.avgRating && parseFloat(p.avgRating) >= 4.5;
+            if (filter === 'to_rate') return miHistorial[p.id]?.comidos > 0 && !misValoraciones.includes(p.id);
+            if (filter === 'ordered') return (miHistorial[p.id]?.pendientes > 0 || miHistorial[p.id]?.comidos > 0);
+            if (filter === 'new') return (!miHistorial[p.id]?.pendientes && !miHistorial[p.id]?.comidos);
+            if (filter === 'stock') return p.stockRestante > 0;
+            return true;
+        });
+    }
+
+    // Ordenamiento
+    lista.sort((a, b) => {
+        const aReady = !a.cocinando && a.totalPendientes >= a.target;
+        const bReady = !b.cocinando && b.totalPendientes >= b.target;
+        if (aReady && !bReady) return -1;
+        if (!aReady && bReady) return 1;
+        
+        if (a.cocinando && !b.cocinando) return -1;
+        if (!a.cocinando && b.cocinando) return 1;
+        
+        const aStock = a.stockRestante > 0;
+        const bStock = b.stockRestante > 0;
+        if (aStock && !bStock) return -1;
+        if (!aStock && bStock) return 1;
+        
+        if (orden === 'ranking') return b.sortRating - a.sortRating;
+        if (orden === 'nombre') return a.displayName.localeCompare(b.displayName);
+        
+        const aActive = a.ocupadasActual;
+        const bActive = b.ocupadasActual;
+        if (aActive !== bActive) return bActive - aActive;
+        
+        return a.displayName.localeCompare(b.displayName);
+    });
+
+    const newIds = lista.map(p => p.id);
+    // Verificación simple para evitar loops infinitos
+    if (JSON.stringify(newIds) !== JSON.stringify(orderedIds)) {
+        setOrderedIds(newIds);
+    }
+  }, [enrichedPizzas, filter, orden, activeCategories, miHistorial, misValoraciones, orderedIds]); // Dependencias completas
+
+  useEffect(() => { const params = new URLSearchParams(window.location.search); const rateId = params.get('rate'); if (rateId && enrichedPizzas.length > 0) { const pizza = enrichedPizzas.find(p => p.id === rateId) || pizzas.find(p => p.id === rateId); if (pizza) { openRating(pizza); const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname; window.history.replaceState({ path: newUrl }, '', newUrl); } } }, [enrichedPizzas]); 
+  useEffect(() => { if(!nombreInvitado || !pizzas.length) return; const storedQueue = localStorage.getItem('vito-review-queue'); let queue: { id: string, pizzaId: string, triggerAt: number }[] = storedQueue ? JSON.parse(storedQueue) : []; let queueChanged = false; const delivered = pedidos.filter(p => p.invitado_nombre === nombreInvitado && p.estado === 'entregado'); delivered.forEach(p => { if (misValoraciones.includes(p.pizza_id)) return; if (queue.find(q => q.id === p.id)) return; if (processedOrderIds.current.has(p.id)) return; processedOrderIds.current.add(p.id); if (!firstLoadRef.current) { const delayMins = config.tiempo_recordatorio_minutos || 10; const triggerTime = Date.now() + (delayMins * 60000); queue.push({ id: p.id, pizzaId: p.pizza_id, triggerAt: triggerTime }); queueChanged = true; } }); if (queueChanged) localStorage.setItem('vito-review-queue', JSON.stringify(queue)); const checker = setInterval(() => { const currentQueueStr = localStorage.getItem('vito-review-queue'); if (!currentQueueStr) return; let currentQueue = JSON.parse(currentQueueStr); const now = Date.now(); const toNotify: any[] = []; const remaining: any[] = []; currentQueue.forEach((item: any) => { if (misValoraciones.includes(item.pizzaId)) return; if (now >= item.triggerAt) toNotify.push(item); else remaining.push(item); }); if (toNotify.length > 0) { const item = toNotify[0]; const pz = enrichedPizzas.find(z => z.id === item.pizzaId) || pizzas.find(z => z.id === item.pizzaId); if (pz) { const delay = config.tiempo_recordatorio_minutos || 10; const nameToShow = pz.displayName || pz.nombre; sendNotification(t.rateQuestion + " " + nameToShow + "?", `${t.ateTimeAgo} ${delay} ${t.minAgo}`, `/?rate=${pz.id}`); setLateRatingPizza(pz); setShowLateRatingModal(true); } localStorage.setItem('vito-review-queue', JSON.stringify(remaining)); } }, 10000); return () => clearInterval(checker); }, [pedidos, nombreInvitado, pizzas, enrichedPizzas, misValoraciones, config]);
 
   const openRating = (p: any) => { setPizzaToRate(p); setRatingValue(0); setCommentValue(''); setShowRatingModal(true); };
   const submitRating = async () => { if (ratingValue === 0) return; await supabase.from('valoraciones').insert([{ pizza_id: pizzaToRate.id, invitado_nombre: nombreInvitado, rating: ratingValue, comentario: commentValue }]); setMisValoraciones(prev => [...prev, pizzaToRate.id]); const storedQueue = localStorage.getItem('vito-review-queue'); if (storedQueue) { const queue = JSON.parse(storedQueue); const newQueue = queue.filter((item: any) => item.pizzaId !== pizzaToRate.id); localStorage.setItem('vito-review-queue', JSON.stringify(newQueue)); } setShowRatingModal(false); setShowLateRatingModal(false); fetchDatos(); };
@@ -291,7 +644,7 @@ export default function VitoPizzaApp() {
       );
   }
 
-  // 2. NAME INPUT CON FOTO
+  // 2. NAME INPUT CON FOTO (Click en foto reabre selector)
   if (flowStep === 'name') {
       return (
           <div className={`min-h-screen flex items-center justify-center p-4 ${base.bg}`}>
