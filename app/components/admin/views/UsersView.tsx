@@ -1,4 +1,4 @@
-import { User, Shield, Lock, Unlock, Trash2, RotateCcw, Plus } from 'lucide-react';
+import { User, Shield, Lock, Unlock, Trash2, RotateCcw, Plus, ZoomIn } from 'lucide-react';
 
 export const UsersView = ({ 
     base, newGuestName, setNewGuestName, addU, allUsersList, resetU, toggleB, eliminarUsuario, 
@@ -38,17 +38,21 @@ export const UsersView = ({
                         <div key={u.nombre} className={`${base.card} rounded-2xl p-3 border flex items-center gap-3 ${u.bloqueado ? base.blocked : ''}`}>
                             
                             {/* AVATAR O INICIAL */}
-                            <div 
-                                className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white overflow-hidden border border-white/10 cursor-pointer ${u.bloqueado ? 'bg-red-500' : (avatarUrl ? 'bg-black' : 'bg-gray-400')}`}
+                            <button 
+                                type="button"
+                                className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white overflow-hidden border border-white/10 cursor-pointer ${u.bloqueado ? 'bg-red-500' : (avatarUrl ? 'bg-black hover:opacity-80' : 'bg-gray-400')}`}
                                 // Si hay foto, permitimos hacer zoom al hacer click
-                                onClick={() => avatarUrl && setImageToView && setImageToView(avatarUrl)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if(avatarUrl && setImageToView) setImageToView(avatarUrl);
+                                }}
                             >
                                 {avatarUrl ? (
-                                    <img src={avatarUrl} className="w-full h-full object-cover" alt={u.nombre} />
+                                    <img src={avatarUrl} className="w-full h-full object-cover pointer-events-none" alt={u.nombre} />
                                 ) : (
                                     u.nombre.charAt(0).toUpperCase()
                                 )}
-                            </div>
+                            </button>
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
