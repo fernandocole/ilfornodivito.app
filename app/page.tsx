@@ -348,33 +348,23 @@ export default function VitoPizzaApp() {
                   if (ing) {
                       let qtyFisica = ing.cantidad_disponible || 0;
                       
-                      // Reservar Base de pedidos pendientes
+                      // Reservado BASE de todos los pedidos pendientes de esta pizza
                       const reservadosBase = pedidos
                           .filter(p => p.estado === 'pendiente' && p.pizza_id === pizza.id)
                           .reduce((acc, p) => acc + (item.cantidad_requerida * (p.cantidad_porciones/target)), 0);
                       
-                      // Reservar Extras: Buscar en todos los pedidos pendientes si usan este ingrediente como extra
-                      // (Simplificación aceptable para front-end: Sumamos 1 unidad del ingrediente por cada aparición en 'detalles_adicionales'
-                      //  si coincide con un 'adicional' definido para esa pizza. Lo ideal es mapear 'adicionales' completo).
-                      
-                      let reservadosExtras = 0;
-                      // Buscar qué adicionales usan este ingrediente
-                      const adisConEsteIng = adicionales.filter(a => a.ingrediente_id === item.ingrediente_id);
-                      
-                      if(adisConEsteIng.length > 0) {
-                         // Buscar pedidos pendientes que tengan estos adicionales
-                         pedidos.filter(p => p.estado === 'pendiente').forEach(p => {
-                             if(p.detalles_adicionales) {
-                                 p.detalles_adicionales.forEach((name: string) => {
-                                     // Ver si 'name' corresponde a uno de los adicionales que usan este ingrediente
-                                     // OJO: El nombre del adicional debe coincidir y pertenecer a la pizza correcta? 
-                                     // Generalmente el nombre es único por pizza.
-                                     const match = adisConEsteIng.find(a => a.nombre_visible === name && a.pizza_id === p.pizza_id);
-                                     if(match) reservadosExtras += match.cantidad_requerida;
-                                 });
-                             }
-                         });
-                      }
+                      // Reservado EXTRA de todos los pedidos pendientes (si este ingrediente es un extra)
+                      const reservadosExtras = pedidos
+                          .filter(p => p.estado === 'pendiente' && p.detalles_adicionales)
+                          .reduce((acc, p) => {
+                              let count = 0;
+                              p.detalles_adicionales.forEach((name:string) => {
+                                  // Buscamos si el extra usa este ingrediente
+                                  const adi = adicionales.find(a => a.pizza_id === p.pizza_id && a.nombre_visible === name && a.ingrediente_id === item.ingrediente_id);
+                                  if(adi) count += adi.cantidad_requerida;
+                              });
+                              return acc + count;
+                          }, 0);
 
                       const totalReservado = reservadosBase + reservadosExtras;
                       const disponibleReal = Math.max(0, qtyFisica - totalReservado);
@@ -399,7 +389,12 @@ export default function VitoPizzaApp() {
           if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } 
           
           const misAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
-          return { ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales }; 
+
+          return { 
+              ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, 
+              ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), 
+              avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales 
+          }; 
       }); 
   }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes, adicionales]);
 
@@ -417,6 +412,7 @@ export default function VitoPizzaApp() {
   async function modificarPedido(p: any, acc: 'sumar' | 'restar') { 
       if (!nombreInvitado.trim()) { alert(t.errorName); return; } 
       if (usuarioBloqueado) { alert(`${t.blocked}: ${motivoBloqueo || ''}`); return; } 
+      
       if (acc === 'sumar') { 
           if (p.stockRestante <= 0) { alert("Sin stock :("); return; }
           if (p.disponiblesAdicionales && p.disponiblesAdicionales.length > 0) {
@@ -425,18 +421,35 @@ export default function VitoPizzaApp() {
               setOrderToConfirm(p);
           }
       } else { 
-          if (p.cocinando) { mostrarMensaje(`🔥 ¡Ya está ${getCookingText(p.tipo)}! No se puede cancelar.`, 'alerta'); return; } 
-          const pending = pedidos.filter(pd => pd.pizza_id === p.id && pd.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim() && pd.estado === 'pendiente'); 
+          // --- NUEVA LÓGICA DE CANCELACIÓN CORREGIDA ---
+          // 1. Buscamos primero si hay pedidos PENDIENTES
+          const pending = pedidos.filter(pd => 
+              pd.pizza_id === p.id && 
+              pd.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim() && 
+              pd.estado === 'pendiente'
+          );
+
           if (pending.length > 0) { 
               const toDelete = pending[0]; 
               
-              // --- CORRECCIÓN: SOLO BORRAR PEDIDO (EL STOCK NO SE HABIA COBRADO DE DB) ---
+              // Solo borramos el pedido (no tocamos stock físico)
               const newPedidos = pedidos.filter(x => x.id !== toDelete.id); 
               setPedidos(newPedidos); 
               mostrarMensaje(`${t.successCancel} ${p.displayName}`, 'info'); 
               await supabase.from('pedidos').delete().eq('id', toDelete.id); 
               fetchDatos(); 
-          } 
+          } else {
+              // 2. Si no hay pendientes, verificamos si hay EN HORNO para dar mensaje específico
+              const cooking = pedidos.filter(pd => 
+                  pd.pizza_id === p.id && 
+                  pd.invitado_nombre.toLowerCase() === nombreInvitado.toLowerCase().trim() && 
+                  pd.estado === 'cocinando'
+              );
+
+              if (cooking.length > 0) {
+                  mostrarMensaje(`🔥 Esas unidades ya están en el horno, no se pueden cancelar.`, 'alerta');
+              }
+          }
       } 
   }
   
@@ -461,6 +474,7 @@ export default function VitoPizzaApp() {
       setOrderToConfirm(null); setSelectedAdicionales([]); mostrarMensaje(`${t.successOrder} ${orderToConfirm.displayName}!`, 'exito'); 
       const { error, data } = await supabase.from('pedidos').insert([{ invitado_nombre: nombreInvitado, pizza_id: orderToConfirm.id, cantidad_porciones: 1, estado: 'pendiente', detalles_adicionales: selectedAdicionales }]).select().single(); 
       if (error) { setPedidos(prev => prev.filter(p => p.id !== tempId)); alert("Error al pedir. Intenta de nuevo."); } else { 
+          // Replace temp with real
           setPedidos(prev => prev.map(p => p.id === tempId ? data : p));
       } 
   }
