@@ -162,7 +162,7 @@ export default function VitoPizzaApp() {
   const formatTime = (seconds: number) => { 
       const m = Math.floor(seconds / 60); 
       const s = seconds % 60; 
-      return `${m}m ${s > 0 ? s + 's' : ''}`; // FORMATO MIN Y SEG
+      return `${m}m ${s > 0 ? s + 's' : ''}`; 
   };
   
   const getWelcomeMessage = () => { 
@@ -326,7 +326,9 @@ export default function VitoPizzaApp() {
   }, [nombreInvitado, flowStep, t]); 
   useEffect(() => { fetchDatos(); const c = supabase.channel('app-realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => fetchDatos()).subscribe(); return () => { supabase.removeChannel(c); }; }, [fetchDatos]);
 
-  // --- RECALCULAR STOCK VISUAL (INVITADOS) ---
+  const activeCategories: string[] = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas') return ['Todas']; if (Array.isArray(parsed)) return parsed; return ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
+  
+  // --- ENRICHED PIZZAS WITH ROBUST STOCK LOGIC (UNIFIED) ---
   const enrichedPizzas = useMemo(() => { 
       const globalAvg = allRatings.length > 0 ? (allRatings.reduce((a, r) => a + r.rating, 0) / allRatings.length) : 0; 
       
@@ -346,12 +348,36 @@ export default function VitoPizzaApp() {
                   if (ing) {
                       let qtyFisica = ing.cantidad_disponible || 0;
                       
-                      // Reservado BASE de pedidos pendientes
+                      // Reservar Base de pedidos pendientes
                       const reservadosBase = pedidos
                           .filter(p => p.estado === 'pendiente' && p.pizza_id === pizza.id)
                           .reduce((acc, p) => acc + (item.cantidad_requerida * (p.cantidad_porciones/target)), 0);
                       
-                      const disponibleReal = Math.max(0, qtyFisica - reservadosBase);
+                      // Reservar Extras: Buscar en todos los pedidos pendientes si usan este ingrediente como extra
+                      // (Simplificación aceptable para front-end: Sumamos 1 unidad del ingrediente por cada aparición en 'detalles_adicionales'
+                      //  si coincide con un 'adicional' definido para esa pizza. Lo ideal es mapear 'adicionales' completo).
+                      
+                      let reservadosExtras = 0;
+                      // Buscar qué adicionales usan este ingrediente
+                      const adisConEsteIng = adicionales.filter(a => a.ingrediente_id === item.ingrediente_id);
+                      
+                      if(adisConEsteIng.length > 0) {
+                         // Buscar pedidos pendientes que tengan estos adicionales
+                         pedidos.filter(p => p.estado === 'pendiente').forEach(p => {
+                             if(p.detalles_adicionales) {
+                                 p.detalles_adicionales.forEach((name: string) => {
+                                     // Ver si 'name' corresponde a uno de los adicionales que usan este ingrediente
+                                     // OJO: El nombre del adicional debe coincidir y pertenecer a la pizza correcta? 
+                                     // Generalmente el nombre es único por pizza.
+                                     const match = adisConEsteIng.find(a => a.nombre_visible === name && a.pizza_id === p.pizza_id);
+                                     if(match) reservadosExtras += match.cantidad_requerida;
+                                 });
+                             }
+                         });
+                      }
+
+                      const totalReservado = reservadosBase + reservadosExtras;
+                      const disponibleReal = Math.max(0, qtyFisica - totalReservado);
                       const posibles = Math.floor(disponibleReal / item.cantidad_requerida);
                       
                       if (posibles < limit) limit = posibles;
@@ -362,6 +388,7 @@ export default function VitoPizzaApp() {
           } else { 
               stockCalculado = pizza.stock || 0; 
           }
+          // --- FIN LOGICA STOCK ---
 
           const pen = pedidos.filter(p => p.pizza_id === pizza.id && p.estado !== 'entregado').reduce((a, c) => a + c.cantidad_porciones, 0); 
           const rats = allRatings.filter(r => r.pizza_id === pizza.id); 
@@ -372,18 +399,9 @@ export default function VitoPizzaApp() {
           if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } 
           
           const misAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
-
-          return { 
-              ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, 
-              ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), 
-              avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales 
-          }; 
+          return { ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales }; 
       }); 
   }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes, adicionales]);
-  
-  // --- ACCIONES DE INVITADO CORREGIDAS ---
-
-  const activeCategories = useMemo(() => { try { const parsed = JSON.parse(config.categoria_activa); if (parsed === 'Todas') return ['Todas']; if (Array.isArray(parsed)) return parsed; return ['General']; } catch { return ['General']; } }, [config.categoria_activa]);
 
   const summaryData = useMemo(() => { if(!summarySheet) return []; return enrichedPizzas.filter(p => { const h = miHistorial[p.id]; if(!h) return false; if(summarySheet === 'wait') return h.enEspera > 0; if(summarySheet === 'oven') return h.enHorno > 0; if(summarySheet === 'ready') return h.comidos > 0; if(summarySheet === 'total') return h.pendientes > 0; return false; }).map(p => { const h = miHistorial[p.id]; let count = 0; if(summarySheet === 'wait') count = h.enEspera; else if(summarySheet === 'oven') count = h.enHorno; else if(summarySheet === 'ready') count = h.comidos; else count = h.pendientes; return { ...p, count }; }); }, [summarySheet, enrichedPizzas, miHistorial]); 
   const mySummary = useMemo(() => { let t = 0, w = 0, o = 0, r = 0; pizzas.forEach(p => { const h = miHistorial[p.id]; if(h) { w += h.enEspera; o += h.enHorno; r += h.comidos; t += h.pendientes; } }); return { total: t, wait: w, oven: o, ready: r }; }, [miHistorial, pizzas]);
@@ -412,7 +430,7 @@ export default function VitoPizzaApp() {
           if (pending.length > 0) { 
               const toDelete = pending[0]; 
               
-              // --- CORRECCIÓN: SOLO BORRAR PEDIDO (EL STOCK NO SE HABIA COBRADO) ---
+              // --- CORRECCIÓN: SOLO BORRAR PEDIDO (EL STOCK NO SE HABIA COBRADO DE DB) ---
               const newPedidos = pedidos.filter(x => x.id !== toDelete.id); 
               setPedidos(newPedidos); 
               mostrarMensaje(`${t.successCancel} ${p.displayName}`, 'info'); 
@@ -438,12 +456,11 @@ export default function VitoPizzaApp() {
       setPedidos(prev => [...prev, newOrder]); 
       
       // --- CORRECCIÓN: NO DESCONTAR STOCK FÍSICO AL PEDIR ---
-      // Solo se crea el pedido, la reserva es visual gracias a 'recalcularStockLocal' (admin) y 'enrichedPizzas' (guest).
+      // Solo insertamos el pedido. El cálculo visual 'enrichedPizzas' se encargará de restar visualmente.
 
       setOrderToConfirm(null); setSelectedAdicionales([]); mostrarMensaje(`${t.successOrder} ${orderToConfirm.displayName}!`, 'exito'); 
       const { error, data } = await supabase.from('pedidos').insert([{ invitado_nombre: nombreInvitado, pizza_id: orderToConfirm.id, cantidad_porciones: 1, estado: 'pendiente', detalles_adicionales: selectedAdicionales }]).select().single(); 
       if (error) { setPedidos(prev => prev.filter(p => p.id !== tempId)); alert("Error al pedir. Intenta de nuevo."); } else { 
-          // Replace temp with real
           setPedidos(prev => prev.map(p => p.id === tempId ? data : p));
       } 
   }
