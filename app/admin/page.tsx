@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
@@ -22,7 +22,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- HELPERS ---
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
@@ -48,11 +47,6 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-const toLocalISOString = (date: Date) => {
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
 const THEMES = [
   { name: 'Carbone', color: 'bg-neutral-600', gradient: 'from-neutral-700 to-neutral-900', text: 'text-neutral-400' },
   { name: 'Turquesa', color: 'bg-cyan-600', gradient: 'from-cyan-600 to-teal-900', text: 'text-cyan-400' },
@@ -73,14 +67,7 @@ export default function AdminPage() {
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS ---
-  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
-  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
-  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
-
-  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
-  const [imageToView, setImageToView] = useState<string | null>(null);
-
+  // DATA
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [ingredientes, setIngredientes] = useState<any[]>([]);
@@ -88,17 +75,24 @@ export default function AdminPage() {
   const [adicionales, setAdicionales] = useState<any[]>([]); 
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
-    
-  const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
   const [config, setConfig] = useState<any>({ porciones_por_pizza: 4, total_invitados: 10, password_invitados: '', categoria_activa: '["General"]', mensaje_bienvenida: '', tiempo_recordatorio_minutos: 10 });
-  const [invitadosCount, setInvitadosCount] = useState(0);
+  
+  // UI & FILTER
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
+  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+  const [imageToView, setImageToView] = useState<string | null>(null);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [invitadosCount, setInvitadosCount] = useState(0);
   const prevPedidosCount = useRef(0);
-    
+
+  // FORMULARIOS
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -107,32 +101,30 @@ export default function AdminPage() {
   const [newPizzaPortions, setNewPizzaPortions] = useState(4); 
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
-    
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
-  
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET');
-  const [bulkIngId, setBulkIngId] = useState('');
-  const [bulkQty, setBulkQty] = useState<string | number>('');
-  const [bulkSelectedPizzas, setBulkSelectedPizzas] = useState<string[]>([]);
-  
+
   const [newIngName, setNewIngName] = useState('');
   const [newIngQty, setNewIngQty] = useState<string | number>('');
   const [newIngUnit, setNewIngUnit] = useState('g');
   const [newIngCat, setNewIngCat] = useState('General');
   const [editingIngId, setEditingIngId] = useState<string | null>(null);
-  const [editIngForm, setEditIngForm] = useState<{nombre: string, cantidad: number | string, unidad: string, categoria: string}>({nombre:'', cantidad:0, unidad:'g', categoria: 'General'});
-  const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
-  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string | number>>({});
+  const [editIngForm, setEditIngForm] = useState<any>({});
   const [newGuestName, setNewGuestName] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [tempMotivos, setTempMotivos] = useState<Record<string, string>>({});
 
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET');
+  const [bulkIngId, setBulkIngId] = useState('');
+  const [bulkQty, setBulkQty] = useState<string | number>('');
+  const [bulkSelectedPizzas, setBulkSelectedPizzas] = useState<string[]>([]);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
+  const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
+  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -144,6 +136,7 @@ export default function AdminPage() {
 
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
+  // AUTH
   useEffect(() => {
     const session = localStorage.getItem('vito-admin-session');
     if (session) {
@@ -151,10 +144,10 @@ export default function AdminPage() {
     }
   }, []);
 
+  // REALTIME
   useEffect(() => {
       if (autenticado) {
           cargarDatos();
-          // Debounce Realtime
           const channel = supabase.channel('admin-realtime')
             .on('postgres_changes', { event: '*', schema: 'public' }, () => { setTimeout(() => cargarDatos(), 1000); })
             .subscribe();
@@ -162,7 +155,7 @@ export default function AdminPage() {
       }
   }, [autenticado]);
 
-  // --- RECALCULAR STOCK LOCAL (Optimistic) ---
+  // STOCK LOCAL RECALC
   useEffect(() => {
       if (autenticado && pizzas.length > 0 && ingredientes.length > 0) {
           recalcularStockLocal();
@@ -171,20 +164,18 @@ export default function AdminPage() {
 
   const recalcularStockLocal = () => {
        const reservedStock: Record<string, number> = {};
-       const pedidosActivos = pedidos.filter(p => p.estado === 'pendiente'); // Solo los pendientes reservan
+       const pedidosActivos = pedidos.filter(p => p.estado === 'pendiente'); 
        
        pedidosActivos.forEach((pedido: any) => {
            const pizza = pizzas.find((p:any) => p.id === pedido.pizza_id);
            const portions = pizza?.porciones_individuales || config.porciones_por_pizza || 8;
            const fraccion = pedido.cantidad_porciones / portions;
            
-           // 1. Reservar Base
            const rec = recetas.filter((r: any) => r.pizza_id === pedido.pizza_id);
            rec.forEach((item: any) => {
                reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion);
            });
 
-           // 2. Reservar Extras
            if(pedido.detalles_adicionales && pedido.detalles_adicionales.length > 0) {
               pedido.detalles_adicionales.forEach((extraName: string) => {
                   const adiDef = adicionales.find(a => a.pizza_id === pedido.pizza_id && a.nombre_visible === extraName);
@@ -246,7 +237,7 @@ export default function AdminPage() {
   const ranking = useMemo(() => { return pizzas.map(p => { const vals = valoraciones.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b.rating, 0) / vals.length) : 0; const orders = pedidos.filter(ped => ped.pizza_id === p.id).reduce((acc, c) => acc + c.cantidad_porciones, 0); return { ...p, avg: parseFloat(avg.toFixed(1)), count: vals.length, totalOrders: orders }; }).sort((a, b) => b.avg - a.avg); }, [pizzas, valoraciones, pedidos]);
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
-  // --- BASIC HELPERS ---
+  // Helpers basicos
   const toggleDarkMode = () => { setIsDarkMode(!isDarkMode); localStorage.setItem('vito-dark-mode', String(!isDarkMode)); };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
@@ -288,7 +279,7 @@ export default function AdminPage() {
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // --- REVERTIR ESTADO CORREGIDO (CON DEVOLUCIÓN DE EXTRAS) ---
+  // --- REVERTIR ESTADO ---
   const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => { 
       let targets = [];
       const isOven = accion === 'sacar_horno';
@@ -296,7 +287,6 @@ export default function AdminPage() {
           ? p.pedidosPendientes.filter((o:any) => o.estado === 'cocinando')
           : p.pedidosPendientes.filter((o:any) => o.estado === 'pendiente');
 
-      // Selección o Todos
       if (idsSeleccionados && idsSeleccionados.length > 0) {
            targets = source.filter((x:any) => idsSeleccionados.includes(x.id));
       } else {
@@ -333,7 +323,7 @@ export default function AdminPage() {
               if (ing) {
                   const newQ = ing.cantidad_disponible + totalReturns[ingId];
                   setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQ } : i));
-                  updates.push(supabase.from('ingredientes').update({cantidad_disponible: newQ}).eq('id', ingId));
+                  updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQ }).eq('id', ingId));
               }
           }
           await Promise.all(updates);
@@ -416,6 +406,7 @@ export default function AdminPage() {
     } else {
         const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
         let cupo = target;
+        // FIFO: Ordenar por fecha creación ascendente (más viejos primero)
         const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         for(const pd of ordenados){ 
             if(cupo <= 0) break; 
@@ -480,7 +471,16 @@ export default function AdminPage() {
       setNewPizzaName(''); setNewPizzaIngredients([]); cargarDatos();
   };
   const updateP = (id:string, f:string, v:any) => { supabase.from('menu_pizzas').update({[f]:v}).eq('id',id); setPizzas(p=>p.map(x=>x.id===id?{...x,[f]:v}:x)); };
-  const duplicateP = async(p:any) => { /*...*/ };
+  const duplicateP = async(p:any) => { 
+      if(!confirm("Duplicar?")) return;
+      // Implementación simplificada duplicar
+      const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single();
+      if(data) {
+          const rec = recetas.filter(r=>r.pizza_id === p.id);
+          if(rec.length) await supabase.from('recetas').insert(rec.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida})));
+      }
+      cargarDatos();
+  };
   const delP = async(id:string) => { if(confirm("Borrar?")) { await supabase.from('menu_pizzas').delete().eq('id', id); cargarDatos(); } };
   const changePass = async() => { await supabase.from('configuracion_dia').update({password_admin:newPass}).eq('id',config.id); };
   const toggleCategory = async(c:string) => { const s = new Set(activeCategories); if(s.has(c))s.delete(c); else s.add(c); setConfig({...config, categoria_activa: JSON.stringify(Array.from(s))}); supabase.from('configuracion_dia').update({categoria_activa: JSON.stringify(Array.from(s))}).eq('id',config.id); };
@@ -524,7 +524,30 @@ export default function AdminPage() {
        </div>
 
        <div className="pt-24 px-4 pb-36 max-w-4xl mx-auto">
-           {view === 'cocina' && <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} forceStopCooking={forceStopCooking} revertirEstado={revertirEstado} />}
+           {view === 'cocina' && (
+                <>
+                {/* BARRA DE ESTADO (ISSUE 2 SOLVED) */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                    <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
+                         <div className="flex items-center gap-1 opacity-60"><Users size={12}/><span className="text-[8px] font-bold uppercase">Espera (Pers)</span></div>
+                         <p className="text-xl font-black">{stats.hungryPeople}</p>
+                    </div>
+                    <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
+                         <div className="flex items-center gap-1 opacity-60"><Hourglass size={12}/><span className="text-[8px] font-bold uppercase">En Cola</span></div>
+                         <p className="text-xl font-black">{stats.waiting}</p>
+                    </div>
+                    <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
+                         <div className="flex items-center gap-1 opacity-60"><Flame size={12}/><span className="text-[8px] font-bold uppercase">En Horno</span></div>
+                         <p className="text-xl font-black">{stats.cooking}</p>
+                    </div>
+                    <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
+                         <div className="flex items-center gap-1 opacity-60"><CheckCircle size={12}/><span className="text-[8px] font-bold uppercase">Entregado</span></div>
+                         <p className="text-xl font-black">{stats.delivered}</p>
+                    </div>
+                </div>
+                <KitchenView metricas={metricas} base={base} isCompact={isCompact} isDarkMode={isDarkMode} currentTheme={currentTheme} toggleCocinando={moverAlHorno} entregar={entregar} forceStopCooking={forceStopCooking} revertirEstado={revertirEstado} />
+                </>
+           )}
            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} openCleanModal={openCleanModal} avatarMap={avatarMap} setImageToView={setImageToView} usersList={allUsersList} />}
            {view === 'menu' && <MenuView base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} setNewPizzaType={setNewPizzaType} typeFilter={menuTypeFilter} setTypeFilter={setMenuTypeFilter} sortOrder={menuSortOrder} setSortOrder={setMenuSortOrder} adicionales={adicionales} addAdicional={addAdicional} delAdicional={delAdicional} />}
            {view === 'ingredientes' && <InventoryView base={base} currentTheme={currentTheme} ingredients={ingredientes} newIngName={newIngName} setNewIngName={setNewIngName} newIngQty={newIngQty} setNewIngQty={setNewIngQty} newIngUnit={newIngUnit} setNewIngUnit={setNewIngUnit} newIngCat={newIngCat} setNewIngCat={setNewIngCat} addIng={addIng} editingIngId={editingIngId} editIngForm={editIngForm} setEditIngForm={setEditIngForm} saveEditIng={saveEditIng} saveBulkIngredient={saveBulkIngredient} cancelEditIng={cancelEditIng} delIng={delIng} startEditIng={startEditIng} reservedState={reservedState} quickUpdateStock={quickUpdateStock} inventoryFilterCategory={inventoryFilterCategory} setInventoryFilterCategory={setInventoryFilterCategory} />}

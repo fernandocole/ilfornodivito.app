@@ -154,6 +154,10 @@ export const InventoryView = ({
                     const isEditing = editingIngId === ing.id;
                     const reserved = reservedState[ing.id] || 0;
                     
+                    // Cálculo de stock real para visualización
+                    // Si se está editando, mostramos el valor del formulario, si no, el valor real menos reservado
+                    const stockDisplay = isEditing ? editIngForm.cantidad : Math.max(0, ing.cantidad_disponible - reserved);
+                    
                     return (
                         <div key={ing.id} className={`${base.card} rounded-3xl border relative group overflow-hidden flex flex-col justify-between transition-shadow hover:shadow-md`}>
                             {isEditing ? (
@@ -202,7 +206,10 @@ export const InventoryView = ({
                                         </div>
                                         
                                         <div className="flex items-baseline gap-1 mt-2">
-                                            <span className="text-xl font-black tracking-tight">{ing.cantidad_disponible}</span>
+                                            {/* Mostramos el stock real disponible */}
+                                            <span className={`text-xl font-black tracking-tight ${stockDisplay <= 0 ? 'text-red-500' : ''}`}>
+                                                {typeof stockDisplay === 'number' ? stockDisplay.toFixed(stockDisplay % 1 === 0 ? 0 : 1) : stockDisplay}
+                                            </span>
                                             <span className="text-xs font-bold opacity-40">{ing.unidad}</span>
                                         </div>
 
