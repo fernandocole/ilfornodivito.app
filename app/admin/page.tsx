@@ -22,6 +22,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// --- HELPERS ---
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
@@ -47,6 +48,11 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
+const toLocalISOString = (date: Date) => {
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const THEMES = [
   { name: 'Carbone', color: 'bg-neutral-600', gradient: 'from-neutral-700 to-neutral-900', text: 'text-neutral-400' },
   { name: 'Turquesa', color: 'bg-cyan-600', gradient: 'from-cyan-600 to-teal-900', text: 'text-cyan-400' },
@@ -67,7 +73,14 @@ export default function AdminPage() {
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // DATA
+  // --- ESTADOS ---
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
+  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+  const [imageToView, setImageToView] = useState<string | null>(null);
+
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [ingredientes, setIngredientes] = useState<any[]>([]);
@@ -75,24 +88,17 @@ export default function AdminPage() {
   const [adicionales, setAdicionales] = useState<any[]>([]); 
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
+    
+  const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
   const [config, setConfig] = useState<any>({ porciones_por_pizza: 4, total_invitados: 10, password_invitados: '', categoria_activa: '["General"]', mensaje_bienvenida: '', tiempo_recordatorio_minutos: 10 });
-  
-  // UI & FILTER
-  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
-  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
-  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
-  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
-  const [imageToView, setImageToView] = useState<string | null>(null);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [invitadosCount, setInvitadosCount] = useState(0);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
-  const [edits, setEdits] = useState<Record<string, any>>({});
-  const [invitadosCount, setInvitadosCount] = useState(0);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
   const prevPedidosCount = useRef(0);
-
-  // FORMULARIOS
+    
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -101,10 +107,17 @@ export default function AdminPage() {
   const [newPizzaPortions, setNewPizzaPortions] = useState(4); 
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
+    
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
-
+  
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET');
+  const [bulkIngId, setBulkIngId] = useState('');
+  const [bulkQty, setBulkQty] = useState<string | number>('');
+  const [bulkSelectedPizzas, setBulkSelectedPizzas] = useState<string[]>([]);
+  
   const [newIngName, setNewIngName] = useState('');
   const [newIngQty, setNewIngQty] = useState<string | number>('');
   const [newIngUnit, setNewIngUnit] = useState('g');
@@ -116,13 +129,9 @@ export default function AdminPage() {
   const [confirmPass, setConfirmPass] = useState('');
   const [tempMotivos, setTempMotivos] = useState<Record<string, string>>({});
 
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET');
-  const [bulkIngId, setBulkIngId] = useState('');
-  const [bulkQty, setBulkQty] = useState<string | number>('');
-  const [bulkSelectedPizzas, setBulkSelectedPizzas] = useState<string[]>([]);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
+
   const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
   const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
 
@@ -237,7 +246,7 @@ export default function AdminPage() {
   const ranking = useMemo(() => { return pizzas.map(p => { const vals = valoraciones.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b.rating, 0) / vals.length) : 0; const orders = pedidos.filter(ped => ped.pizza_id === p.id).reduce((acc, c) => acc + c.cantidad_porciones, 0); return { ...p, avg: parseFloat(avg.toFixed(1)), count: vals.length, totalOrders: orders }; }).sort((a, b) => b.avg - a.avg); }, [pizzas, valoraciones, pedidos]);
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
-  // Helpers basicos
+  // --- BASIC HELPERS ---
   const toggleDarkMode = () => { setIsDarkMode(!isDarkMode); localStorage.setItem('vito-dark-mode', String(!isDarkMode)); };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
@@ -279,67 +288,6 @@ export default function AdminPage() {
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // --- REVERTIR ESTADO ---
-  const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => { 
-      let targets = [];
-      const isOven = accion === 'sacar_horno';
-      const source = isOven 
-          ? p.pedidosPendientes.filter((o:any) => o.estado === 'cocinando')
-          : p.pedidosPendientes.filter((o:any) => o.estado === 'pendiente');
-
-      if (idsSeleccionados && idsSeleccionados.length > 0) {
-           targets = source.filter((x:any) => idsSeleccionados.includes(x.id));
-      } else {
-           targets = source; 
-      }
-
-      if (targets.length === 0) return;
-      const ids = targets.map((x:any) => x.id);
-
-      if (isOven) {
-          if (!confirm(`¿Devolver ${targets.length} pedidos de "En Horno" a "En Espera"? (Se repondrá stock)`)) return;
-          
-          setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'pendiente' } : o));
-          await supabase.from('pedidos').update({ estado: 'pendiente' }).in('id', ids);
-
-          // DEVOLVER STOCK (Base + Extras)
-          const totalReturns: Record<string, number> = {};
-          const portions = p.porciones_individuales || config.porciones_por_pizza || 1;
-          const unitsToReturn = Math.ceil(targets.reduce((a:number,b:any)=>a+b.cantidad_porciones,0) / portions);
-          
-          const rec = recetas.filter(r => r.pizza_id === p.id);
-          rec.forEach(r => { totalReturns[r.ingrediente_id] = (totalReturns[r.ingrediente_id] || 0) + (r.cantidad_requerida * unitsToReturn); });
-
-          targets.forEach((ord: any) => {
-              if(ord.detalles_adicionales) ord.detalles_adicionales.forEach((n:string) => {
-                  const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
-                  if(adi) totalReturns[adi.ingrediente_id] = (totalReturns[adi.ingrediente_id] || 0) + adi.cantidad_requerida;
-              });
-          });
-
-          const updates = [];
-          for (const ingId in totalReturns) {
-              const ing = ingredientes.find(i => i.id === ingId);
-              if (ing) {
-                  const newQ = ing.cantidad_disponible + totalReturns[ingId];
-                  setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQ } : i));
-                  updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQ }).eq('id', ingId));
-              }
-          }
-          await Promise.all(updates);
-
-          const rem = p.pedidosPendientes.filter((x:any) => x.estado === 'cocinando' && !ids.includes(x.id));
-          if(rem.length === 0) await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
-
-      } else {
-          // CANCELAR ESPERA -> SOLO BORRAR
-          if(!confirm("¿Eliminar pedidos en espera?")) return;
-          setPedidos(prev => prev.filter(o => !ids.includes(o.id)));
-          await supabase.from('pedidos').delete().in('id', ids);
-      }
-      setTimeout(() => cargarDatos(), 500);
-  };
-
   // 1. MOVER AL HORNO: Descuenta Receta Base + Descuenta Extras de DB
   const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
       const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
@@ -394,7 +342,75 @@ export default function AdminPage() {
       if(!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id));
       await Promise.all(updates);
   };
-  
+
+  // 2. REVERTIR ESTADO
+  const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => {
+      let targets = [];
+      const source = accion === 'sacar_horno' ? p.pedidosPendientes.filter((o:any) => o.estado === 'cocinando') : p.pedidosPendientes.filter((o:any) => o.estado === 'pendiente');
+      if (idsSeleccionados.length > 0) targets = source.filter((x:any) => idsSeleccionados.includes(x.id));
+      else targets = source;
+
+      if(targets.length === 0) return;
+      const ids = targets.map((x:any) => x.id);
+
+      if (accion === 'sacar_horno') {
+          if(!confirm("¿Devolver de horno a espera? (Se repondrá stock)")) return;
+          
+          setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'pendiente' } : o));
+          await supabase.from('pedidos').update({ estado: 'pendiente' }).in('id', ids);
+          
+          const remainingInOven = p.pedidosPendientes.filter((x:any) => x.estado === 'cocinando' && !ids.includes(x.id));
+          if(remainingInOven.length === 0) {
+              await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
+          }
+
+          // DEVOLVER STOCK BASE
+          const rec = recetas.filter(r => r.pizza_id === p.id);
+          const portions = p.porciones_individuales || config.porciones_por_pizza || 1;
+          const totalPorciones = targets.reduce((a:number, b:any) => a + b.cantidad_porciones, 0);
+          const unitsToReturn = Math.ceil(totalPorciones / portions);
+
+          const updates = [];
+          for (const item of rec) {
+              const ing = ingredientes.find(i => i.id === item.ingrediente_id);
+              if (ing) {
+                  const newQty = ing.cantidad_disponible + (item.cantidad_requerida * unitsToReturn);
+                  setIngredientes(prev => prev.map(i => i.id === ing.id ? { ...i, cantidad_disponible: newQty } : i));
+                  updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ing.id));
+              }
+          }
+          
+          // Devolver Extras
+          const extrasToReturn: Record<string, number> = {};
+          targets.forEach((ord: any) => {
+              if(ord.detalles_adicionales) {
+                   ord.detalles_adicionales.forEach((n:string) => {
+                      const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
+                      if(adi) extrasToReturn[adi.ingrediente_id] = (extrasToReturn[adi.ingrediente_id] || 0) + adi.cantidad_requerida;
+                  });
+              }
+          });
+          
+          for (const ingId in extrasToReturn) {
+              const ing = ingredientes.find(i => i.id === ingId);
+              if (ing) {
+                 const toAdd = extrasToReturn[ingId];
+                 const newQty = ing.cantidad_disponible + toAdd;
+                 setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQty } : i));
+                 updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ingId));
+              }
+          }
+          await Promise.all(updates);
+
+      } else {
+          // CANCELAR ESPERA -> SOLO BORRAR
+          if(!confirm("¿Eliminar pedidos en espera?")) return;
+          setPedidos(prev => prev.filter(o => !ids.includes(o.id)));
+          await supabase.from('pedidos').delete().in('id', ids);
+      }
+      setTimeout(() => cargarDatos(), 500);
+  };
+
   const entregar = async (p: any, idsSeleccionados?: string[]) => { 
     const enHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
     if (enHorno.length === 0) return; 
@@ -473,7 +489,6 @@ export default function AdminPage() {
   const updateP = (id:string, f:string, v:any) => { supabase.from('menu_pizzas').update({[f]:v}).eq('id',id); setPizzas(p=>p.map(x=>x.id===id?{...x,[f]:v}:x)); };
   const duplicateP = async(p:any) => { 
       if(!confirm("Duplicar?")) return;
-      // Implementación simplificada duplicar
       const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single();
       if(data) {
           const rec = recetas.filter(r=>r.pizza_id === p.id);
@@ -508,7 +523,25 @@ export default function AdminPage() {
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
 
 
-  if (!autenticado) return (<div className={`min-h-screen flex items-center justify-center ${base.bg}`}><div className={`p-8 rounded-xl border ${base.card}`}><button onClick={ingresar} className="bg-blue-600 text-white px-4 py-2 rounded">Entrar (Admin)</button></div></div>);
+  if (!autenticado) {
+      return (
+          <div className={`min-h-screen flex items-center justify-center p-4 pb-40 ${base.bg}`}>
+            <div className={`w-full max-w-md p-8 rounded-3xl border shadow-xl ${base.card}`}>
+              <div className="flex justify-center mb-6"><img src="/logo.png" alt="Logo" className="h-48 w-auto object-contain drop-shadow-xl" /></div>
+              <form onSubmit={ingresar} className="flex flex-col gap-4">
+                  <div className="relative">
+                      <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full p-4 rounded-xl border outline-none ${base.input}`} placeholder="Contraseña..." autoFocus />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff size={24} /> : <Eye size={24} />}</button>
+                  </div>
+                  <button type="submit" className={`w-full ${currentTheme.color} text-white font-bold py-4 rounded-xl hover:opacity-90 transition`}>ENTRAR</button>
+              </form>
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                  <button onClick={() => window.location.href='/'} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-2 font-bold ${base.buttonSec}`}><Users size={20} /> MODO INVITADOS</button>
+              </div>
+            </div>
+          </div>
+      );
+  }
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
