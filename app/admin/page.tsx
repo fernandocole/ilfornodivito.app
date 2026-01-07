@@ -22,7 +22,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- HELPERS ---
 const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
@@ -48,11 +47,6 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-const toLocalISOString = (date: Date) => {
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
 const THEMES = [
   { name: 'Carbone', color: 'bg-neutral-600', gradient: 'from-neutral-700 to-neutral-900', text: 'text-neutral-400' },
   { name: 'Turquesa', color: 'bg-cyan-600', gradient: 'from-cyan-600 to-teal-900', text: 'text-cyan-400' },
@@ -71,9 +65,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
+  
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS ---
   const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
   const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
   const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
@@ -223,14 +217,17 @@ export default function AdminPage() {
     }
   }, [autenticado]);
 
+  // --- ONLINE USERS TRACKING (ADMIN) ---
   useEffect(() => {
     if (!autenticado) return;
     const presenceChannel = supabase.channel('online-users', { config: { presence: { key: 'admin' }, }, });
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
+        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
+        // Correctly map the name sent by the guest
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
