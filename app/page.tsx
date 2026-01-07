@@ -417,7 +417,6 @@ export default function VitoPizzaApp() {
   async function modificarPedido(p: any, acc: 'sumar' | 'restar') { 
       if (!nombreInvitado.trim()) { alert(t.errorName); return; } 
       if (usuarioBloqueado) { alert(`${t.blocked}: ${motivoBloqueo || ''}`); return; } 
-      
       if (acc === 'sumar') { 
           if (p.stockRestante <= 0) { alert("Sin stock :("); return; }
           if (p.disponiblesAdicionales && p.disponiblesAdicionales.length > 0) {

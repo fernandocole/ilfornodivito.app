@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
   Palette, Sun, Moon, ArrowUpNarrowWide, ArrowDownAZ, Maximize2, Minimize2, ShieldAlert,
-  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink, Calendar, RefreshCcw, Edit2
+  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink, Calendar, RefreshCcw
 } from 'lucide-react';
 
 import { KitchenView } from '../components/admin/views/KitchenView';
@@ -68,14 +68,7 @@ export default function AdminPage() {
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS ---
-  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
-  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
-  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
-
-  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
-  const [imageToView, setImageToView] = useState<string | null>(null);
-
+  // DATA
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [ingredientes, setIngredientes] = useState<any[]>([]);
@@ -83,17 +76,24 @@ export default function AdminPage() {
   const [adicionales, setAdicionales] = useState<any[]>([]); 
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
-    
-  const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
   const [config, setConfig] = useState<any>({ porciones_por_pizza: 4, total_invitados: 10, password_invitados: '', categoria_activa: '["General"]', mensaje_bienvenida: '', tiempo_recordatorio_minutos: 10 });
-  const [invitadosCount, setInvitadosCount] = useState(0);
+  
+  // UI
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
+  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+  const [imageToView, setImageToView] = useState<string | null>(null);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [invitadosCount, setInvitadosCount] = useState(0);
   const prevPedidosCount = useRef(0);
-    
+
+  // FORMULARIOS
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -102,7 +102,6 @@ export default function AdminPage() {
   const [newPizzaPortions, setNewPizzaPortions] = useState(4); 
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
-    
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
@@ -126,10 +125,8 @@ export default function AdminPage() {
 
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
-
-  // ESTADOS QUE FALTABAN
   const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
-  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string | number>>({});
+  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -141,7 +138,6 @@ export default function AdminPage() {
 
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
-  // AUTH
   useEffect(() => {
     const session = localStorage.getItem('vito-admin-session');
     if (session) {
@@ -149,7 +145,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // REALTIME
   useEffect(() => {
       if (autenticado) {
           cargarDatos();
@@ -160,7 +155,6 @@ export default function AdminPage() {
       }
   }, [autenticado]);
 
-  // STOCK LOCAL RECALC
   useEffect(() => {
       if (autenticado && pizzas.length > 0 && ingredientes.length > 0) {
           recalcularStockLocal();
@@ -226,10 +220,9 @@ export default function AdminPage() {
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
-        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
-        // Correctly map the name sent by the guest
+        // AQUI ESTA LA MAGIA: Leemos g.name que envia el invitado
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
@@ -287,7 +280,7 @@ export default function AdminPage() {
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // 1. MOVER AL HORNO: Descuenta Receta Base + Descuenta Extras de DB
+  // 1. MOVER AL HORNO
   const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
       const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
       if (pendientes.length === 0) return; 
@@ -314,12 +307,8 @@ export default function AdminPage() {
       updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', ids));
 
       const totalDeductions: Record<string, number> = {};
-      
-      // Base
       const rec = recetas.filter(r => r.pizza_id === p.id);
       rec.forEach(r => { totalDeductions[r.ingrediente_id] = (totalDeductions[r.ingrediente_id] || 0) + (r.cantidad_requerida * unitsToCook); });
-      
-      // Extras
       finalTargets.forEach((ord: any) => {
           if(ord.detalles_adicionales) ord.detalles_adicionales.forEach((n:string) => {
               const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
@@ -327,7 +316,6 @@ export default function AdminPage() {
           });
       });
 
-      // Aplicar descuentos
       for (const ingId in totalDeductions) {
           const ing = ingredientes.find(i => i.id === ingId);
           if (ing) {
@@ -363,7 +351,6 @@ export default function AdminPage() {
               await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
           }
 
-          // DEVOLVER STOCK BASE
           const rec = recetas.filter(r => r.pizza_id === p.id);
           const portions = p.porciones_individuales || config.porciones_por_pizza || 1;
           const totalPorciones = targets.reduce((a:number, b:any) => a + b.cantidad_porciones, 0);
@@ -379,7 +366,6 @@ export default function AdminPage() {
               }
           }
           
-          // Devolver Extras
           const extrasToReturn: Record<string, number> = {};
           targets.forEach((ord: any) => {
               if(ord.detalles_adicionales) {
@@ -402,7 +388,6 @@ export default function AdminPage() {
           await Promise.all(updates);
 
       } else {
-          // CANCELAR ESPERA -> SOLO BORRAR
           if(!confirm("¿Eliminar pedidos en espera?")) return;
           setPedidos(prev => prev.filter(o => !ids.includes(o.id)));
           await supabase.from('pedidos').delete().in('id', ids);
@@ -421,7 +406,6 @@ export default function AdminPage() {
     } else {
         const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
         let cupo = target;
-        // FIFO: Ordenar por fecha creación ascendente (más viejos primero)
         const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         for(const pd of ordenados){ 
             if(cupo <= 0) break; 
@@ -465,7 +449,6 @@ export default function AdminPage() {
       }
   };
   
-  // FUNCION NUEVA PARA ACTUALIZAR TOTAL INVITADOS
   const updateTotalGuests = async (n: number) => {
      const val = Math.max(0, n);
      setConfig({ ...config, total_invitados: val });
@@ -601,14 +584,24 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
+       {/* BARRA DE NAVEGACION INFERIOR RESTAURADA */}
+       <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
+          <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
+          <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>
+          <button onClick={() => setView('menu')} className={`flex flex-col items-center gap-1 ${view === 'menu' ? currentTheme.text : base.subtext}`}><ChefHat size={20} /><span className="text-[9px] font-bold">MENU</span></button>
+          <button onClick={() => setView('ranking')} className={`flex flex-col items-center gap-1 ${view === 'ranking' ? currentTheme.text : base.subtext}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">RANK</span></button>
+          <button onClick={() => setView('usuarios')} className={`flex flex-col items-center gap-1 ${view === 'usuarios' ? currentTheme.text : base.subtext}`}><Users size={20} /><span className="text-[9px] font-bold">USERS</span></button>
+          <button onClick={() => setView('ingredientes')} className={`flex flex-col items-center gap-1 ${view === 'ingredientes' ? currentTheme.text : base.subtext}`}><ShoppingBag size={20} /><span className="text-[9px] font-bold">INV</span></button>
+          <button onClick={() => setView('logs')} className={`flex flex-col items-center gap-1 ${view === 'logs' ? currentTheme.text : base.subtext}`}><ShieldAlert size={20} /><span className="text-[9px] font-bold">Logs</span></button>
+          <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
+       </div>
+
        {/* MODAL ONLINE USERS (Restaurado) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
                 <button onClick={() => setShowOnlineModal(false)} className="absolute top-4 right-4 text-gray-500"><X size={20}/></button>
-                
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Users size={20} className="text-green-500"/> En Línea ({onlineUsers})</h3>
-                
                 <div className="max-h-60 overflow-y-auto space-y-2">
                     {onlineGuestList.length > 0 ? onlineGuestList.map((u, i) => (
                         <div key={i} className={`p-3 rounded-xl border ${base.innerCard} flex items-center gap-2`}>
