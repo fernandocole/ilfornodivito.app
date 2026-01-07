@@ -1,170 +1,111 @@
-import { Lock, Save, Trash2, Clock, Smartphone, RotateCcw, Users, KeyRound, Star } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-// Inicializamos el cliente de Supabase aquí para este componente
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { Lock, Save, Clock, Users, Type, MessageSquare } from 'lucide-react';
 
 export const ConfigView = ({ 
     base, config, setConfig, isDarkMode, resetAllOrders, 
     newPass, setNewPass, confirmPass, setConfirmPass, changePass, 
-    currentTheme, sessionDuration, setSessionDuration 
+    currentTheme, sessionDuration, setSessionDuration,
+    updateTotalGuests // <--- NUEVA PROP RECIBIDA
 }: any) => {
 
-    const DURATIONS = [
-        { label: '1 Hora', value: 60 * 60 * 1000 },
-        { label: '8 Horas', value: 8 * 60 * 60 * 1000 },
-        { label: '24 Horas', value: 24 * 60 * 60 * 1000 },
-        { label: '3 Días', value: 3 * 24 * 60 * 60 * 1000 },
-        { label: '1 Semana', value: 7 * 24 * 60 * 60 * 1000 },
-        { label: '30 Días', value: 30 * 24 * 60 * 60 * 1000 },
-    ];
-
-    const handleDurationChange = (val: number) => {
-        setSessionDuration(val);
-        // Actualizar también la sesión actual si existe para extenderla
-        const currentSession = localStorage.getItem('vito-admin-session');
-        if (currentSession) {
-            const expiry = Date.now() + val;
-            localStorage.setItem('vito-admin-session', JSON.stringify({ expiry }));
-        }
-    };
-
     return (
-        <div className="space-y-6 animate-in fade-in pb-20">
-            
-            {/* --- MENSAJE DE BIENVENIDA --- */}
-            <div className={`p-5 rounded-3xl border ${base.card}`}>
-                <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Smartphone size={20}/> Mensaje de Bienvenida</h3>
-                <p className={`text-xs mb-3 ${base.subtext}`}>Usa [nombre], [fecha], [hora], [pizzas] como variables.</p>
-                <textarea 
-                    className={`w-full p-4 rounded-xl border outline-none min-h-[100px] text-sm ${base.input}`}
-                    value={config.mensaje_bienvenida || ''}
-                    onChange={(e) => setConfig({...config, mensaje_bienvenida: e.target.value})}
-                    placeholder="Ej: Hola [nombre], hoy hay [pizzas] variedades..."
-                />
-                <button 
-                    onClick={async () => {
-                        await supabase.from('configuracion_dia').update({ mensaje_bienvenida: config.mensaje_bienvenida }).eq('id', config.id);
-                        alert("Mensaje guardado");
-                    }} 
-                    className={`mt-3 w-full py-3 rounded-xl font-bold text-sm ${currentTheme.color} text-white shadow-lg`}
-                >
-                    GUARDAR MENSAJE
-                </button>
-            </div>
+        <div className="space-y-6 pb-10">
+            <h2 className="text-2xl font-black opacity-80">Configuración</h2>
 
-            {/* --- AVISO DE CALIFICACIÓN --- */}
-            <div className={`p-5 rounded-3xl border ${base.card}`}>
-                <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Star size={20}/> Aviso de Calificación</h3>
-                <p className={`text-xs mb-3 ${base.subtext}`}>Tiempo que espera la app después de "Entregado" para pedir valoración.</p>
-                
-                <div className="flex items-center gap-3">
-                    <Clock size={20} className={base.subtext} />
-                    <input 
-                        type="number" 
-                        className={`w-20 p-3 rounded-xl border outline-none text-center font-bold ${base.input}`}
-                        // Si el valor es null/undefined, mostramos '' para permitir borrado
-                        value={config.tiempo_recordatorio_minutos === 0 ? '' : config.tiempo_recordatorio_minutos}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            // Si está vacío, guardamos 0 temporalmente (o null si prefieres)
-                            setConfig({
-                                ...config, 
-                                tiempo_recordatorio_minutos: val === '' ? 0 : parseInt(val)
-                            });
-                        }}
-                    />
-                    <span className={`text-sm font-bold ${base.text}`}>minutos</span>
-                    
-                    <button 
-                        onClick={async () => {
-                            // Al guardar, aseguramos que si es 0, sea al menos 1 o lo que consideres mínimo
-                            const finalVal = config.tiempo_recordatorio_minutos || 10; 
-                            await supabase.from('configuracion_dia').update({ tiempo_recordatorio_minutos: finalVal }).eq('id', config.id);
-                            setConfig({...config, tiempo_recordatorio_minutos: finalVal});
-                            alert("Tiempo actualizado");
-                        }} 
-                        className={`ml-auto px-4 py-3 rounded-xl font-bold text-xs ${currentTheme.color} text-white shadow-lg`}
-                    >
-                        GUARDAR
-                    </button>
-                </div>
-            </div>
-
-            {/* --- ACCESO INVITADOS --- */}
-            <div className={`p-5 rounded-3xl border ${base.card}`}>
-                <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Users size={20}/> Acceso Invitados</h3>
-                <p className={`text-xs mb-3 ${base.subtext}`}>Si dejas esto vacío, cualquiera podrá entrar sin clave.</p>
-                
-                <div className="flex gap-2">
-                    <div className={`flex-1 flex items-center px-4 rounded-xl border ${base.input}`}>
-                        <KeyRound size={18} className={base.subtext} />
+            {/* 1. CAPACIDAD DEL EVENTO (NUEVO) */}
+            <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Users className="text-blue-500" /> Capacidad del Evento
+                </h3>
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                        <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Total Invitados Esperados</label>
+                        <p className="text-[10px] opacity-50">Esto define el cálculo de "faltantes" en el panel de usuarios.</p>
+                    </div>
+                    <div className="w-24">
                         <input 
-                            type="text"
-                            className="w-full bg-transparent outline-none p-3 ml-2"
-                            value={config.password_invitados || ''}
-                            onChange={(e) => setConfig({...config, password_invitados: e.target.value})}
-                            placeholder="Sin contraseña..."
+                            type="number" 
+                            value={config.total_invitados || 0} 
+                            onChange={(e) => updateTotalGuests(Number(e.target.value))} 
+                            className={`w-full p-3 rounded-xl border outline-none text-center font-bold text-lg ${base.input}`} 
                         />
                     </div>
+                </div>
+            </div>
+
+            {/* 2. MENSAJE DE BIENVENIDA */}
+            <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <MessageSquare className="text-purple-500" /> Mensaje de Bienvenida
+                </h3>
+                <div className="space-y-3">
+                    <div className="text-xs opacity-60 p-3 rounded-xl border border-dashed border-gray-500/30">
+                        <p className="font-bold mb-1">Variables disponibles:</p>
+                        <code className="text-[10px]">[nombre], [fecha], [hora], [pizzas]</code>
+                    </div>
+                    <textarea 
+                        value={config.mensaje_bienvenida || ''} 
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setConfig({...config, mensaje_bienvenida: val});
+                            // Ojo: Esto actualiza local, idealmente debería haber un botón guardar o auto-save, 
+                            // pero para mantener consistencia con el resto usaremos el prop setConfig 
+                            // y asumiremos que el padre maneja el guardado o se agrega un botón aquí.
+                            // Para este caso rápido, agregaremos un botón de guardar específico para esto abajo.
+                        }}
+                        className={`w-full p-4 rounded-xl border outline-none h-32 text-sm ${base.input}`} 
+                        placeholder="Ej: Hola [nombre], bienvenido a mi cumple..."
+                    />
                     <button 
                         onClick={async () => {
-                            await supabase.from('configuracion_dia').update({ password_invitados: config.password_invitados }).eq('id', config.id);
-                            alert("Contraseña de invitados actualizada");
-                        }} 
-                        className={`px-6 rounded-xl font-bold text-sm ${currentTheme.color} text-white shadow-lg`}
+                            // Pequeño hack para guardar esto sin crear una función nueva en el padre
+                            // Idealmente updateConfig debería venir del padre.
+                            const { createClient } = require('@supabase/supabase-js');
+                            const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                            await supabase.from('configuracion_dia').update({ mensaje_bienvenida: config.mensaje_bienvenida }).eq('id', config.id);
+                            alert("Mensaje guardado");
+                        }}
+                        className={`w-full py-3 rounded-xl font-bold ${base.buttonSec}`}
                     >
-                        <Save size={20} />
+                        Guardar Mensaje
                     </button>
                 </div>
             </div>
 
-            {/* --- SEGURIDAD ADMIN --- */}
-            <div className={`p-5 rounded-3xl border ${base.card}`}>
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Lock size={20}/> Seguridad Admin</h3>
-                
-                {/* Selector de Duración de Sesión */}
-                <div className="mb-6">
-                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${base.subtext}`}>Mantener sesión abierta por:</label>
-                    <div className="grid grid-cols-3 gap-2">
-                        {DURATIONS.map((d) => (
-                            <button
-                                key={d.label}
-                                onClick={() => handleDurationChange(d.value)}
-                                className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${sessionDuration === d.value ? `${currentTheme.color} text-white border-transparent` : `${base.buttonSec}`}`}
-                            >
-                                {d.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className={`h-[1px] w-full ${base.divider} my-4`}></div>
-
-                <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${base.subtext}`}>Cambiar Contraseña Admin</label>
-                <div className="flex flex-col gap-2">
-                    <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className={`w-full p-3 rounded-xl border outline-none ${base.input}`} placeholder="Nueva contraseña" />
-                    <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className={`w-full p-3 rounded-xl border outline-none ${base.input}`} placeholder="Confirmar contraseña" />
-                    <button onClick={changePass} disabled={!newPass || newPass !== confirmPass} className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${newPass && newPass === confirmPass ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
-                        ACTUALIZAR PASS
-                    </button>
+            {/* 3. CAMBIAR CONTRASEÑA */}
+            <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Lock className="text-orange-500" /> Contraseña Admin
+                </h3>
+                <div className="space-y-3">
+                    <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nueva contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
+                    <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirmar contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
+                    <button onClick={changePass} disabled={!newPass || newPass !== confirmPass} className={`w-full py-3 rounded-xl font-bold bg-orange-500 text-white disabled:opacity-50`}>Actualizar Contraseña</button>
                 </div>
             </div>
 
-            {/* --- ZONA DE PELIGRO --- */}
-            <div className={`p-5 rounded-3xl border border-red-500/20 bg-red-500/5`}>
-                <h3 className="font-bold text-lg mb-4 text-red-500 flex items-center gap-2"><Trash2 size={20}/> Zona de Peligro</h3>
-                
-                <div className="flex items-center justify-between mb-4">
-                     <div className="flex-1">
-                         <h4 className={`font-bold text-sm ${base.text}`}>Resetear Pedidos</h4>
-                         <p className={`text-[10px] ${base.subtext}`}>Borra todos los pedidos pero mantiene el menú.</p>
-                     </div>
-                     <button onClick={resetAllOrders} className="bg-red-500 text-white p-2 rounded-xl"><RotateCcw size={20}/></button>
+            {/* 4. DURACIÓN SESIÓN */}
+            <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Clock className="text-green-500" /> Sesión Admin
+                </h3>
+                <div className="flex gap-2">
+                    {[1, 4, 12, 24].map(h => (
+                        <button key={h} onClick={() => setSessionDuration(h * 60 * 60 * 1000)} className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all ${sessionDuration === h * 60 * 60 * 1000 ? 'bg-green-500 text-white border-green-500' : base.buttonSec}`}>
+                            {h}h
+                        </button>
+                    ))}
                 </div>
+            </div>
+
+            {/* 5. ZONA DE PELIGRO */}
+            <div className={`p-5 rounded-3xl border border-red-500/30 bg-red-500/5`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500">
+                    <Type className="rotate-180" /> Zona de Peligro
+                </h3>
+                <button onClick={resetAllOrders} className="w-full py-4 rounded-xl font-bold bg-red-600 text-white shadow-lg hover:bg-red-700 transition-colors">
+                    REINICIAR TODOS LOS PEDIDOS
+                </button>
+                <p className="text-[10px] text-center mt-2 opacity-60">Esto borrará el historial de pedidos del día, pero mantendrá el menú e invitados.</p>
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
@@ -46,11 +46,6 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
         }
     });
     return min === Infinity ? 0 : min;
-};
-
-const toLocalISOString = (date: Date) => {
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 const THEMES = [
@@ -123,7 +118,7 @@ export default function AdminPage() {
   const [newIngUnit, setNewIngUnit] = useState('g');
   const [newIngCat, setNewIngCat] = useState('General');
   const [editingIngId, setEditingIngId] = useState<string | null>(null);
-  const [editIngForm, setEditIngForm] = useState<{nombre: string, cantidad: number | string, unidad: string, categoria: string}>({nombre:'', cantidad:0, unidad:'g', categoria: 'General'});
+  const [editIngForm, setEditIngForm] = useState<any>({});
   const [newGuestName, setNewGuestName] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
@@ -231,10 +226,8 @@ export default function AdminPage() {
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
-        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
-        // Correctly map the name sent by the guest
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
@@ -250,7 +243,7 @@ export default function AdminPage() {
   const ranking = useMemo(() => { return pizzas.map(p => { const vals = valoraciones.filter(v => v.pizza_id === p.id); const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b.rating, 0) / vals.length) : 0; const orders = pedidos.filter(ped => ped.pizza_id === p.id).reduce((acc, c) => acc + c.cantidad_porciones, 0); return { ...p, avg: parseFloat(avg.toFixed(1)), count: vals.length, totalOrders: orders }; }).sort((a, b) => b.avg - a.avg); }, [pizzas, valoraciones, pedidos]);
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
-  // --- BASIC HELPERS ---
+  // --- HELPER FUNCTIONS ---
   const toggleDarkMode = () => { setIsDarkMode(!isDarkMode); localStorage.setItem('vito-dark-mode', String(!isDarkMode)); };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
@@ -601,12 +594,12 @@ export default function AdminPage() {
            {view === 'menu' && <MenuView base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} typeFilter={menuTypeFilter} setTypeFilter={setMenuTypeFilter} sortOrder={menuSortOrder} setSortOrder={setMenuSortOrder} adicionales={adicionales} addAdicional={addAdicional} delAdicional={delAdicional} />}
            {view === 'ingredientes' && <InventoryView base={base} currentTheme={currentTheme} ingredients={ingredientes} newIngName={newIngName} setNewIngName={setNewIngName} newIngQty={newIngQty} setNewIngQty={setNewIngQty} newIngUnit={newIngUnit} setNewIngUnit={setNewIngUnit} newIngCat={newIngCat} setNewIngCat={setNewIngCat} addIng={addIng} editingIngId={editingIngId} editIngForm={editIngForm} setEditIngForm={setEditIngForm} saveEditIng={saveEditIng} saveBulkIngredient={saveBulkIngredient} cancelEditIng={cancelEditIng} delIng={delIng} startEditIng={startEditIng} reservedState={reservedState} quickUpdateStock={quickUpdateStock} inventoryFilterCategory={inventoryFilterCategory} setInventoryFilterCategory={setInventoryFilterCategory} />}
            {view === 'usuarios' && <UsersView base={base} newGuestName={newGuestName} setNewGuestName={setNewGuestName} addU={addU} allUsersList={allUsersList} resetU={resetU} toggleB={toggleB} eliminarUsuario={eliminarUsuario} tempMotivos={tempMotivos} setTempMotivos={setTempMotivos} guardarMotivo={guardarMotivo} currentTheme={currentTheme} resetAllOrders={resetAllOrders} avatarMap={avatarMap} setImageToView={setImageToView} />}
-           {view === 'config' && <ConfigView base={base} config={config} setConfig={setConfig} isDarkMode={isDarkMode} resetAllOrders={resetAllOrders} newPass={newPass} setNewPass={setNewPass} confirmPass={confirmPass} setConfirmPass={setConfirmPass} changePass={changePass} currentTheme={currentTheme} sessionDuration={sessionDuration} setSessionDuration={setSessionDuration} />}
+           {view === 'config' && <ConfigView base={base} config={config} setConfig={setConfig} isDarkMode={isDarkMode} resetAllOrders={resetAllOrders} newPass={newPass} setNewPass={setNewPass} confirmPass={confirmPass} setConfirmPass={setConfirmPass} changePass={changePass} currentTheme={currentTheme} sessionDuration={sessionDuration} setSessionDuration={setSessionDuration} updateTotalGuests={updateTotalGuests} />}
            {view === 'logs' && <LogsView base={base} logs={logs} isDarkMode={isDarkMode} currentTheme={currentTheme} updateLogName={updateLogName} onRefresh={refreshLogsOnly} avatarMap={avatarMap} setImageToView={setImageToView} />}
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* MODAL ONLINE USERS (Con edición de Total) */}
+       {/* MODAL ONLINE USERS (Restaurado) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
@@ -614,17 +607,6 @@ export default function AdminPage() {
                 
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Users size={20} className="text-green-500"/> En Línea ({onlineUsers})</h3>
                 
-                {/* EDITOR DE TOTAL INVITADOS */}
-                <div className="mb-4 flex items-center justify-between bg-neutral-100 dark:bg-neutral-800 p-3 rounded-xl">
-                     <span className="text-sm font-bold opacity-70">Total Esperado:</span>
-                     <input 
-                        type="number" 
-                        value={config.total_invitados || 0} 
-                        onChange={(e)=>updateTotalGuests(Number(e.target.value))} 
-                        className="w-16 text-center font-bold bg-transparent border-b border-gray-500 outline-none"
-                     />
-                </div>
-
                 <div className="max-h-60 overflow-y-auto space-y-2">
                     {onlineGuestList.length > 0 ? onlineGuestList.map((u, i) => (
                         <div key={i} className={`p-3 rounded-xl border ${base.innerCard} flex items-center gap-2`}>
