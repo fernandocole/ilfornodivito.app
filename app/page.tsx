@@ -255,7 +255,7 @@ export default function VitoPizzaApp() {
   const handleInstallClick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') setIsInstallable(false); setDeferredPrompt(null); };
   const completeOnboarding = () => { localStorage.setItem('vito-onboarding-seen', 'true'); setShowOnboarding(false); setFlowStep('app'); };
 
-  useEffect(() => { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(error => console.log('SW error:', error)); } const hasSeenOnboarding = localStorage.getItem('vito-onboarding-seen'); if (!hasSeenOnboarding) setShowOnboarding(true); const savedName = localStorage.getItem('vito-guest-name'); if (savedName) setNombreInvitado(savedName); const savedAvatar = localStorage.getItem('vito-guest-avatar'); if (savedAvatar) setAvatarPreview(savedAvatar); const savedTheme = localStorage.getItem('vito-guest-theme'); if (savedTheme) setCurrentTheme(THEMES.find(t => t.name === savedTheme) || THEMES[1]); else setCurrentTheme(THEMES[1]); const savedMode = localStorage.getItem('vito-dark-mode'); if (savedMode !== null) setIsDarkMode(savedMode === 'true'); else setIsDarkMode(false); const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType); const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true); const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre'); const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true'); const savedFilter = localStorage.getItem('vito-filter'); if (savedFilter) setFilter(savedFilter as any); const savedPass = localStorage.getItem('vito-guest-pass-val'); if(savedPass) setGuestPassInput(savedPass); const interval = setInterval(() => { setBannerIndex((prev) => prev + 1); }, 3000); const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); }; window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt); const presenceChannel = supabase.channel('online-users'); presenceChannel.on('presence', { event: 'sync' }, () => { const state = presenceChannel.presenceState(); const count = Object.values(state).reduce((acc: number, presences: any) => { const isGuest = presences.some((p: any) => p.role === 'guest'); return acc + (isGuest ? 1 : 0); }, 0); setOnlineUsers(count); }).subscribe(async (status) => { if (status === 'SUBSCRIBED') { await presenceChannel.track({ online_at: new Date().toISOString(), role: 'guest' }); } }); return () => { clearInterval(interval); window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); supabase.removeChannel(presenceChannel); }; }, []);
+  useEffect(() => { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(error => console.log('SW error:', error)); } const hasSeenOnboarding = localStorage.getItem('vito-onboarding-seen'); if (!hasSeenOnboarding) setShowOnboarding(true); const savedName = localStorage.getItem('vito-guest-name'); if (savedName) setNombreInvitado(savedName); const savedAvatar = localStorage.getItem('vito-guest-avatar'); if (savedAvatar) setAvatarPreview(savedAvatar); const savedTheme = localStorage.getItem('vito-guest-theme'); if (savedTheme) setCurrentTheme(THEMES.find(t => t.name === savedTheme) || THEMES[1]); else setCurrentTheme(THEMES[1]); const savedMode = localStorage.getItem('vito-dark-mode'); if (savedMode !== null) setIsDarkMode(savedMode === 'true'); else setIsDarkMode(false); const savedLang = localStorage.getItem('vito-lang'); if (savedLang) setLang(savedLang as LangType); const savedNotif = localStorage.getItem('vito-notif-enabled'); if (savedNotif === 'true' && typeof Notification !== 'undefined' && Notification.permission === 'granted') setNotifEnabled(true); const savedOrden = localStorage.getItem('vito-orden'); if (savedOrden) setOrden(savedOrden as any); else setOrden('nombre'); const savedCompact = localStorage.getItem('vito-compact'); if (savedCompact) setIsCompact(savedCompact === 'true'); const savedFilter = localStorage.getItem('vito-filter'); if (savedFilter) setFilter(savedFilter as any); const savedPass = localStorage.getItem('vito-guest-pass-val'); if(savedPass) setGuestPassInput(savedPass); const interval = setInterval(() => { setBannerIndex((prev) => prev + 1); }, 3000); const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); }; window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt); const presenceChannel = supabase.channel('online-users'); presenceChannel.on('presence', { event: 'sync' }, () => { const state = presenceChannel.presenceState(); const count = Object.values(state).reduce((acc: number, presences: any) => { const isGuest = presences.some((p: any) => p.role === 'guest'); return acc + (isGuest ? 1 : 0); }, 0); setOnlineUsers(count); }).subscribe(async (status) => { if (status === 'SUBSCRIBED') { await presenceChannel.track({ online_at: new Date().toISOString(), role: 'guest', name: nombreInvitado }); } }); return () => { clearInterval(interval); window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); supabase.removeChannel(presenceChannel); }; }, [nombreInvitado]);
   useEffect(() => { const configChannel = supabase.channel('config-realtime').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_dia' }, (payload: any) => { if (payload.new) { setConfig(prev => ({ ...prev, ...payload.new })); const newPass = payload.new.password_invitados; const storedPass = localStorage.getItem('vito-guest-pass-val'); if (newPass && newPass !== '' && newPass !== storedPass) { alert("La contraseña de acceso ha cambiado. Por favor ingresa nuevamente."); setFlowStep('password'); setGuestPassInput(''); setDbPass(newPass); } } }).subscribe(); return () => { supabase.removeChannel(configChannel); }; }, []);
   useEffect(() => { const logAccess = async () => { let sessionId = localStorage.getItem('vito-session-id'); if (!sessionId) { sessionId = crypto.randomUUID(); localStorage.setItem('vito-session-id', sessionId); } const userAgent = navigator.userAgent; let deviceType = "Desktop"; if (/Mobi|Android/i.test(userAgent)) deviceType = "Mobile"; let browserName = "Unknown"; if (userAgent.indexOf("Chrome") > -1) browserName = "Chrome"; else if (userAgent.indexOf("Safari") > -1) browserName = "Safari"; else if (userAgent.indexOf("Firefox") > -1) browserName = "Firefox"; let ipData = { ip: null, city: null, country_name: null }; try { const res = await fetch('https://ipapi.co/json/'); if (res.ok) ipData = await res.json(); } catch (e) {} const { data: existingLog } = await supabase.from('access_logs').select('id').eq('session_id', sessionId).gt('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()).single(); if (!existingLog) { await supabase.from('access_logs').insert([{ session_id: sessionId, device: deviceType, browser: browserName, ip: ipData.ip, ciudad: ipData.city, pais: ipData.country_name, invitado_nombre: nombreInvitado || null }]); } else { if (nombreInvitado) { await supabase.from('access_logs').update({ invitado_nombre: nombreInvitado }).eq('id', existingLog.id); } } }; logAccess(); }, [nombreInvitado]);
   
@@ -348,23 +348,33 @@ export default function VitoPizzaApp() {
                   if (ing) {
                       let qtyFisica = ing.cantidad_disponible || 0;
                       
-                      // Reservado BASE de todos los pedidos pendientes de esta pizza
+                      // Reservar Base de pedidos pendientes
                       const reservadosBase = pedidos
                           .filter(p => p.estado === 'pendiente' && p.pizza_id === pizza.id)
                           .reduce((acc, p) => acc + (item.cantidad_requerida * (p.cantidad_porciones/target)), 0);
                       
-                      // Reservado EXTRA de todos los pedidos pendientes (si este ingrediente es un extra)
-                      const reservadosExtras = pedidos
-                          .filter(p => p.estado === 'pendiente' && p.detalles_adicionales)
-                          .reduce((acc, p) => {
-                              let count = 0;
-                              p.detalles_adicionales.forEach((name:string) => {
-                                  // Buscamos si el extra usa este ingrediente
-                                  const adi = adicionales.find(a => a.pizza_id === p.pizza_id && a.nombre_visible === name && a.ingrediente_id === item.ingrediente_id);
-                                  if(adi) count += adi.cantidad_requerida;
-                              });
-                              return acc + count;
-                          }, 0);
+                      // Reservar Extras: Buscar en todos los pedidos pendientes si usan este ingrediente como extra
+                      // (Simplificación aceptable para front-end: Sumamos 1 unidad del ingrediente por cada aparición en 'detalles_adicionales'
+                      //  si coincide con un 'adicional' definido para esa pizza. Lo ideal es mapear 'adicionales' completo).
+                      
+                      let reservadosExtras = 0;
+                      // Buscar qué adicionales usan este ingrediente
+                      const adisConEsteIng = adicionales.filter(a => a.ingrediente_id === item.ingrediente_id);
+                      
+                      if(adisConEsteIng.length > 0) {
+                         // Buscar pedidos pendientes que tengan estos adicionales
+                         pedidos.filter(p => p.estado === 'pendiente').forEach(p => {
+                             if(p.detalles_adicionales) {
+                                 p.detalles_adicionales.forEach((name: string) => {
+                                     // Ver si 'name' corresponde a uno de los adicionales que usan este ingrediente
+                                     // OJO: El nombre del adicional debe coincidir y pertenecer a la pizza correcta? 
+                                     // Generalmente el nombre es único por pizza.
+                                     const match = adisConEsteIng.find(a => a.nombre_visible === name && a.pizza_id === p.pizza_id);
+                                     if(match) reservadosExtras += match.cantidad_requerida;
+                                 });
+                             }
+                         });
+                      }
 
                       const totalReservado = reservadosBase + reservadosExtras;
                       const disponibleReal = Math.max(0, qtyFisica - totalReservado);
@@ -389,12 +399,7 @@ export default function VitoPizzaApp() {
           if (lang !== 'es' && autoTranslations[pizza.id] && autoTranslations[pizza.id][lang]) { displayName = autoTranslations[pizza.id][lang].name; displayDesc = autoTranslations[pizza.id][lang].desc; } 
           
           const misAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
-
-          return { 
-              ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, 
-              ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), 
-              avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales 
-          }; 
+          return { ...pizza, displayName, displayDesc, stockRestante: stockCalculado, missingIngredients, target, ocupadasActual: pen % target, faltanParaCompletar: target - (pen % target), avgRating: avg, countRating: rats.length, sortRating: sortR, totalPendientes: pen, disponiblesAdicionales: misAdicionales }; 
       }); 
   }, [pizzas, pedidos, config, allRatings, lang, autoTranslations, recetas, ingredientes, adicionales]);
 

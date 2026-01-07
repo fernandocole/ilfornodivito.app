@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LogOut, LayoutDashboard, List, ChefHat, BarChart3, ShoppingBag, Settings, 
   Palette, Sun, Moon, ArrowUpNarrowWide, ArrowDownAZ, Maximize2, Minimize2, ShieldAlert,
-  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink, Calendar, RefreshCcw
+  Flame, Clock, CheckCircle, Hourglass, Eye, EyeOff, X, Layers, Trash2, Plus, Copy, ExternalLink, Calendar, RefreshCcw, Edit2
 } from 'lucide-react';
 
 import { KitchenView } from '../components/admin/views/KitchenView';
@@ -226,8 +226,10 @@ export default function AdminPage() {
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
+        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
+        // Correctly map the name sent by the guest
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
