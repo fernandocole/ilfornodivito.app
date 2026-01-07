@@ -66,9 +66,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
-  
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
+  // --- ESTADOS ---
   const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
   const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
   const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
@@ -126,8 +126,10 @@ export default function AdminPage() {
 
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
+
+  // ESTADOS QUE FALTABAN
   const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
-  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
+  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string | number>>({});
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -247,7 +249,7 @@ export default function AdminPage() {
   const toggleDarkMode = () => { setIsDarkMode(!isDarkMode); localStorage.setItem('vito-dark-mode', String(!isDarkMode)); };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
-  const selectTheme = (t:any) => { setCurrentTheme(t); setShowThemeSelector(false); };
+  const selectTheme = (t:any) => { setCurrentTheme(t); setShowThemeSelector(false); window.dispatchEvent(new Event('storage')); };
   
   const updateLogName = async (id:string, n:string) => { await supabase.from('access_logs').update({invitado_nombre: n}).eq('id', id); refreshLogsOnly(); };
   
@@ -285,7 +287,7 @@ export default function AdminPage() {
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // 1. MOVER AL HORNO: Descuenta Receta Base + Descuenta Extras de DB
+  // 1. MOVER AL HORNO
   const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
       const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
       if (pendientes.length === 0) return; 
@@ -312,12 +314,8 @@ export default function AdminPage() {
       updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', ids));
 
       const totalDeductions: Record<string, number> = {};
-      
-      // Base
       const rec = recetas.filter(r => r.pizza_id === p.id);
       rec.forEach(r => { totalDeductions[r.ingrediente_id] = (totalDeductions[r.ingrediente_id] || 0) + (r.cantidad_requerida * unitsToCook); });
-      
-      // Extras
       finalTargets.forEach((ord: any) => {
           if(ord.detalles_adicionales) ord.detalles_adicionales.forEach((n:string) => {
               const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
@@ -325,7 +323,6 @@ export default function AdminPage() {
           });
       });
 
-      // Aplicar descuentos
       for (const ingId in totalDeductions) {
           const ing = ingredientes.find(i => i.id === ingId);
           if (ing) {
@@ -361,7 +358,6 @@ export default function AdminPage() {
               await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
           }
 
-          // DEVOLVER STOCK BASE
           const rec = recetas.filter(r => r.pizza_id === p.id);
           const portions = p.porciones_individuales || config.porciones_por_pizza || 1;
           const totalPorciones = targets.reduce((a:number, b:any) => a + b.cantidad_porciones, 0);
@@ -377,7 +373,6 @@ export default function AdminPage() {
               }
           }
           
-          // Devolver Extras
           const extrasToReturn: Record<string, number> = {};
           targets.forEach((ord: any) => {
               if(ord.detalles_adicionales) {
@@ -419,7 +414,6 @@ export default function AdminPage() {
     } else {
         const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
         let cupo = target;
-        // FIFO: Ordenar por fecha creación ascendente (más viejos primero)
         const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         for(const pd of ordenados){ 
             if(cupo <= 0) break; 
@@ -463,7 +457,6 @@ export default function AdminPage() {
       }
   };
   
-  // FUNCION NUEVA PARA ACTUALIZAR TOTAL INVITADOS
   const updateTotalGuests = async (n: number) => {
      const val = Math.max(0, n);
      setConfig({ ...config, total_invitados: val });
@@ -527,25 +520,7 @@ export default function AdminPage() {
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
 
 
-  if (!autenticado) {
-      return (
-          <div className={`min-h-screen flex items-center justify-center p-4 pb-40 ${base.bg}`}>
-            <div className={`w-full max-w-md p-8 rounded-3xl border shadow-xl ${base.card}`}>
-              <div className="flex justify-center mb-6"><img src="/logo.png" alt="Logo" className="h-48 w-auto object-contain drop-shadow-xl" /></div>
-              <form onSubmit={ingresar} className="flex flex-col gap-4">
-                  <div className="relative">
-                      <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full p-4 rounded-xl border outline-none ${base.input}`} placeholder="Contraseña..." autoFocus />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff size={24} /> : <Eye size={24} />}</button>
-                  </div>
-                  <button type="submit" className={`w-full ${currentTheme.color} text-white font-bold py-4 rounded-xl hover:opacity-90 transition`}>ENTRAR</button>
-              </form>
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                  <button onClick={() => window.location.href='/'} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-2 font-bold ${base.buttonSec}`}><Users size={20} /> MODO INVITADOS</button>
-              </div>
-            </div>
-          </div>
-      );
-  }
+  if (!autenticado) return (<div className={`min-h-screen flex items-center justify-center p-4 ${base.bg}`}><div className={`p-8 rounded-xl border ${base.card}`}><button onClick={ingresar} className="bg-blue-600 text-white px-4 py-2 rounded">Entrar (Admin)</button></div></div>);
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
@@ -559,15 +534,39 @@ export default function AdminPage() {
                   </p>
               </div>
           </div>
-          <div className="flex gap-2 pointer-events-auto">
-              <button onClick={logout} className={`p-2 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={20}/></button>
+          <div className="flex gap-2 pointer-events-auto items-start">
+              {/* THEME SELECTOR */}
+              <div className="relative">
+                  <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${currentTheme.text}`}>
+                      <Palette size={20} />
+                  </button>
+                  {showThemeSelector && (
+                      <div className={`absolute top-12 right-0 p-3 rounded-2xl shadow-xl border grid grid-cols-5 gap-2 w-64 ${base.card}`}>
+                          {THEMES.map(t => (
+                              <button key={t.name} onClick={() => selectTheme(t)} className={`w-8 h-8 rounded-full ${t.color} border-2 ${currentTheme.name === t.name ? 'border-white shadow-lg scale-110' : 'border-transparent opacity-80'}`} title={t.name}></button>
+                          ))}
+                      </div>
+                  )}
+              </div>
+              <button onClick={toggleDarkMode} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
+                  {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
+              </button>
+              <button onClick={toggleCompact} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
+                  {isCompact ? <Maximize2 size={20}/> : <Minimize2 size={20}/>}
+              </button>
+              <button onClick={toggleOrden} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
+                  {orden === 'estado' ? <ArrowUpNarrowWide size={20}/> : <ArrowDownAZ size={20}/>}
+              </button>
+              <div className="w-px h-10 bg-gray-500/20 mx-1"></div>
               <button onClick={()=>window.location.href='/'} className={`p-2 rounded-full border shadow-lg ${base.bar} text-green-500`}><Users size={20}/></button>
+              <button onClick={logout} className={`p-2 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={20}/></button>
           </div>
        </div>
 
        <div className="pt-24 px-4 pb-36 max-w-4xl mx-auto">
            {view === 'cocina' && (
                 <>
+                {/* BARRA DE ESTADO (ISSUE 2 SOLVED) */}
                 <div className="grid grid-cols-4 gap-2 mb-4">
                     <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
                          <div className="flex items-center gap-1 opacity-60"><Users size={12}/><span className="text-[8px] font-bold uppercase">Espera</span></div>
@@ -610,7 +609,7 @@ export default function AdminPage() {
           <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
        </div>
 
-       {/* MODAL ONLINE USERS */}
+       {/* MODAL ONLINE USERS (Restaurado) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
