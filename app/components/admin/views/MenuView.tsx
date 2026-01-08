@@ -10,7 +10,7 @@ export const MenuView = ({
     setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP, duplicateP, 
     tempRecipeIng, setTempRecipeIng, tempRecipeQty, setTempRecipeQty, addToExistingPizza, removeFromExistingPizza, 
     reservedState, calcularStockDinamico, updateLocalRecipe, newPizzaType, setNewPizzaType, typeFilter, 
-    setTypeFilter, sortOrder, setSortOrder,
+    setTypeFilter, sortOrder, setSortOrder, handleLocalEdit, // <--- IMPORTANTE: Agregado handleLocalEdit
     // PROPS DE ADICIONALES
     adicionales, addAdicional, delAdicional
 }: any) => {
@@ -62,6 +62,7 @@ export const MenuView = ({
         setExpandedPizza(null); // CONTRAER AL GUARDAR
     };
 
+    // Esta función maneja la activación rápida desde el botón de Power (Directo a DB)
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
         e.stopPropagation();
         updateP(id, 'activa', !currentState);
@@ -262,6 +263,7 @@ export const MenuView = ({
                                  <div className="flex-1 min-w-0 flex flex-col justify-between">
                                      <div className="flex justify-between items-start">
                                          <div>
+                                            {/* CORRECCIÓN: Título neutro (base.text) */}
                                             <h3 className={`font-bold text-lg leading-tight truncate ${base.text}`}>{pizza.nombre}</h3>
                                             <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
                                          </div>
@@ -294,11 +296,11 @@ export const MenuView = ({
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Nombre</label>
-                                                    <input value={isEditing?.nombre ?? pizza.nombre} onChange={e => updateP(pizza.id, 'nombre', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
+                                                    <input value={isEditing?.nombre ?? pizza.nombre} onChange={e => handleLocalEdit(pizza.id, 'nombre', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Descripción</label>
-                                                    <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => updateP(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
+                                                    <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => handleLocalEdit(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
                                                 </div>
                                                 
                                                 <div className="flex gap-4">
@@ -306,7 +308,7 @@ export const MenuView = ({
                                                         <label className="text-[10px] font-bold uppercase opacity-40">Tipo</label>
                                                         <select 
                                                             value={isEditing?.tipo ?? pizza.tipo} 
-                                                            onChange={e => updateP(pizza.id, 'tipo', e.target.value)} 
+                                                            onChange={e => handleLocalEdit(pizza.id, 'tipo', e.target.value)} 
                                                             className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}
                                                         >
                                                             <option value="pizza">Pizza</option>
@@ -317,7 +319,7 @@ export const MenuView = ({
 
                                                     <div className="flex-1 space-y-1">
                                                         <label className="text-[10px] font-bold uppercase opacity-40">Categoría</label>
-                                                        <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => updateP(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
+                                                        <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => handleLocalEdit(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                         <datalist id="categories-list-edit">{uniqueCategories.map((c:string) => <option key={c} value={c} />)}</datalist>
                                                     </div>
                                                 </div>
@@ -329,14 +331,14 @@ export const MenuView = ({
                                                             <input 
                                                                 type="number" 
                                                                 value={Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60)} 
-                                                                onChange={e => updateP(pizza.id, 'tiempo_coccion', (Number(e.target.value) * 60) + ((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60))} 
+                                                                onChange={e => handleLocalEdit(pizza.id, 'tiempo_coccion', (Number(e.target.value) * 60) + ((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60))} 
                                                                 className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
                                                             />
                                                             <span className="font-bold opacity-30">:</span>
                                                             <input 
                                                                 type="number" 
                                                                 value={(isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60} 
-                                                                onChange={e => updateP(pizza.id, 'tiempo_coccion', (Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60) * 60) + Number(e.target.value))} 
+                                                                onChange={e => handleLocalEdit(pizza.id, 'tiempo_coccion', (Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60) * 60) + Number(e.target.value))} 
                                                                 className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
                                                             />
                                                         </div>
@@ -434,9 +436,8 @@ export const MenuView = ({
                                             </div>
                                      </div>
 
-                                     {/* FOOTER ACCIONES */}
+                                     {/* FOOTER ACCIONES - CON BOTON GUARDAR VISIBLE */}
                                      <div className={`flex gap-3 pt-4 border-t mt-4 items-center ${base.divider}`}>
-                                          {/* CAMBIO FOTO */}
                                           <div className={`relative group cursor-pointer w-12 h-12 rounded-xl overflow-hidden border-2 border-dashed border-gray-500/30 hover:border-blue-500 transition-colors flex items-center justify-center ${base.uploadBox}`} title="Cambiar Foto">
                                               <input type="file" accept="image/*" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={(e) => handleImageUpload(e, pizza.id)} />
                                               <Image size={20} className="opacity-40 group-hover:text-blue-500"/>
@@ -446,23 +447,15 @@ export const MenuView = ({
                                           <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
                                           
                                           <div className="flex-1 flex gap-3 justify-end">
-                                              {/* BOTÓN GUARDAR Y CANCELAR SI HAY CAMBIOS */}
-                                              <button 
-                                                  onClick={() => {
-                                                      cancelChanges(pizza.id);
-                                                      setExpandedPizza(null);
-                                                  }} 
-                                                  className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}
-                                              >
-                                                  Cancelar
-                                              </button>
-                                              
-                                              <button 
-                                                  onClick={() => handleSaveEdit(pizza.id)} 
-                                                  className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}
-                                              >
-                                                  <Save size={18}/> Guardar Cambios
-                                              </button>
+                                              {/* BOTÓN GUARDAR VISIBLE CUANDO HAY CAMBIOS */}
+                                              {hasChanges && (
+                                                  <>
+                                                      <button onClick={() => { cancelChanges(pizza.id); setExpandedPizza(null); }} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
+                                                      <button onClick={() => handleSaveEdit(pizza.id)} className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}>
+                                                          <Save size={18}/> Guardar Cambios
+                                                      </button>
+                                                  </>
+                                              )}
                                           </div>
                                      </div>
                                  </div>
