@@ -55,12 +55,6 @@ export const KitchenView = ({
         };
     };
 
-    const getTimeElapsed = (dateString: string) => {
-        if(!dateString) return '';
-        const diff = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 60000);
-        return `${diff} min`;
-    };
-
     const filteredMetrics = metricas.filter((p: any) => {
         const hasPending = p.totalPendientes > 0;
         const isReady = p.completas > 0;
@@ -77,7 +71,7 @@ export const KitchenView = ({
 
     return (
         <div className="space-y-4 pb-24">
-            {/* FILTROS SIEMPRE VISIBLES */}
+            {/* FILTROS SIEMPRE VISIBLES - ESTABAN DENTRO DEL IF, AHORA ESTAN FUERA */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button onClick={() => setFilter('with_orders')} className={getFilterBtnClass(filter === 'with_orders')}>Con Pedidos</button>
                 <button onClick={() => setFilter('all')} className={getFilterBtnClass(filter === 'all')}>Todas</button>

@@ -1,10 +1,10 @@
-import { Trash2, CheckCircle, Clock, Search, ChevronDown, ChevronUp, AlertTriangle, User } from 'lucide-react';
+import { Trash2, CheckCircle, Clock, Search, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
 
 export const OrdersView = ({
-    pedidosAgrupados, base, isDarkMode, eliminarPedidosGusto, resetAllOrders,
-    eliminarUnidad, eliminarUnidadPorEstado, cleanOrdersByState, openCleanModal,
-    avatarMap, setImageToView, usersList
+    pedidosAgrupados, base, isDarkMode, eliminarPedidosGusto, 
+    eliminarUnidad, eliminarUnidadPorEstado, openCleanModal,
+    avatarMap, setImageToView
 }: any) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -63,9 +63,9 @@ export const OrdersView = ({
                                             </div>
                                         </div>
                                     </div>
-                                    {/* CORRECCIÓN: Fondo negro en modo oscuro para que se vea la flecha blanca/gris */}
-                                    <div className={`p-2 rounded-full bg-gray-100 dark:bg-neutral-900 border dark:border-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                        <ChevronDown size={16} className="opacity-50 dark:text-white"/>
+                                    {/* CORRECCIÓN: Fondo NEGRO solido en modo oscuro para contraste */}
+                                    <div className={`p-2 rounded-full transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} bg-gray-100 text-gray-600 dark:bg-neutral-900 dark:text-white border dark:border-gray-700`}>
+                                        <ChevronDown size={16} />
                                     </div>
                                 </div>
 
@@ -112,7 +112,7 @@ export const OrdersView = ({
                 )}
             </div>
 
-            {/* HERRAMIENTA DE LIMPIEZA - SIMPLIFICADA */}
+            {/* HERRAMIENTA DE LIMPIEZA */}
             <div className={`p-6 rounded-3xl border ${base.card} flex flex-col items-center text-center shadow-sm`}>
                 <button 
                     onClick={openCleanModal}
