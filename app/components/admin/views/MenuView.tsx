@@ -80,9 +80,11 @@ export const MenuView = ({
              {/* CABECERA */}
              <div className={`p-4 rounded-3xl border ${base.card} space-y-4 shadow-sm`}>
                 <div className="flex justify-between items-center">
+                    {/* CORRECCIÓN: Título neutro (base.text) */}
                     <h2 className={`text-xl font-bold flex items-center gap-2 ${base.text}`}>
                         <Edit3 /> Gestión del Menú
                     </h2>
+                    {/* CORRECCIÓN: Botón con color del tema */}
                     <button 
                         onClick={() => setShowNewForm(!showNewForm)} 
                         className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.color} text-white hover:opacity-80`}`}
@@ -91,7 +93,7 @@ export const MenuView = ({
                     </button>
                 </div>
 
-                {/* --- SECCIÓN CATEGORÍAS VISIBLES (RESTORED) --- */}
+                {/* --- SECCIÓN CATEGORÍAS VISIBLES --- */}
                 <div className={`p-3 rounded-2xl border ${base.innerCard} bg-opacity-50`}>
                     <p className="text-[10px] font-bold uppercase opacity-60 mb-2">Categorías visibles para invitados:</p>
                     <div className="flex flex-wrap gap-2">
@@ -211,6 +213,7 @@ export const MenuView = ({
                             </div>
                          </div>
                          <div className={`flex justify-end pt-4 border-t ${base.divider}`}>
+                            {/* CORRECCIÓN: Botón con color del tema */}
                             <button 
                                 onClick={handleAddP} 
                                 disabled={!newPizzaName} 
@@ -262,12 +265,13 @@ export const MenuView = ({
                                  <div className="flex-1 min-w-0 flex flex-col justify-between">
                                      <div className="flex justify-between items-start">
                                          <div>
-                                            {/* CORRECCIÓN: Título neutro */}
+                                            {/* CORRECCIÓN: Título neutro (base.text) */}
                                             <h3 className={`font-bold text-lg leading-tight truncate ${base.text}`}>{pizza.nombre}</h3>
                                             <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
                                          </div>
                                          <button 
                                              onClick={(e) => handleQuickToggle(e, pizza.id, pizza.activa)}
+                                             // CORRECCIÓN: Toggle con color del tema
                                              className={`p-2 rounded-full transition-all ${pizza.activa ? `${currentTheme.color} text-white shadow-lg` : 'bg-gray-300 dark:bg-neutral-700 text-gray-500'}`}
                                              title="Activar / Desactivar"
                                          >
@@ -448,6 +452,7 @@ export const MenuView = ({
                                           <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
                                           
                                           <div className="flex-1 flex gap-3 justify-end">
+                                              {/* BOTÓN GUARDAR VISIBLE CUANDO HAY CAMBIOS */}
                                               {hasChanges && (
                                                   <>
                                                       <button onClick={() => cancelChanges(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>

@@ -64,9 +64,9 @@ export const OrdersView = ({
                                         </div>
                                     </div>
                                     
-                                    {/* CORRECCIÓN: Solo la flecha, sin fondo ni borde */}
-                                    <div className={`p-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} opacity-50`}>
-                                        <ChevronDown size={20} />
+                                    {/* CORRECCIÓN: Fondo negro sólido en modo oscuro, gris claro en claro */}
+                                    <div className={`p-2 rounded-full transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} bg-gray-100 text-gray-600 dark:bg-neutral-900 dark:text-white border dark:border-gray-700`}>
+                                        <ChevronDown size={16} />
                                     </div>
                                 </div>
 
