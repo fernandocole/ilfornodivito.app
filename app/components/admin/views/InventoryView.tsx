@@ -113,8 +113,6 @@ export const InventoryView = ({
                 {filteredIngredients.map((ing: any) => {
                     const isEditing = editingIngId === ing.id;
                     const reserved = reservedState[ing.id] || 0;
-                    
-                    // Cálculo visual del stock real disponible (para mostrar en modo NO edición)
                     const stockDisplay = Math.max(0, ing.cantidad_disponible - reserved);
                     
                     return (
@@ -127,7 +125,6 @@ export const InventoryView = ({
                                             Actual: {ing.cantidad_disponible} {ing.unidad}
                                         </span>
                                     </div>
-                                    
                                     <input type="text" value={editIngForm.nombre} onChange={e => setEditIngForm({...editIngForm, nombre: e.target.value})} className={`w-full p-2 rounded-lg border text-sm ${base.input}`} placeholder="Nombre" />
                                     <input type="text" value={editIngForm.categoria} onChange={e => setEditIngForm({...editIngForm, categoria: e.target.value})} className={`w-full p-2 rounded-lg border text-sm ${base.input}`} placeholder="Categoría" list="cat-list" />
                                     
