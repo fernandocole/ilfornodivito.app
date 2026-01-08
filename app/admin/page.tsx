@@ -68,14 +68,7 @@ export default function AdminPage() {
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
-  // --- ESTADOS ---
-  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
-  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
-  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
-
-  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
-  const [imageToView, setImageToView] = useState<string | null>(null);
-
+  // DATA
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
   const [ingredientes, setIngredientes] = useState<any[]>([]);
@@ -83,17 +76,24 @@ export default function AdminPage() {
   const [adicionales, setAdicionales] = useState<any[]>([]); 
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
-    
-  const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
   const [config, setConfig] = useState<any>({ porciones_por_pizza: 4, total_invitados: 10, password_invitados: '', categoria_activa: '["General"]', mensaje_bienvenida: '', tiempo_recordatorio_minutos: 10 });
-  const [invitadosCount, setInvitadosCount] = useState(0);
+  
+  // UI
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
+  const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
+  const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+  const [imageToView, setImageToView] = useState<string | null>(null);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [invitadosCount, setInvitadosCount] = useState(0);
   const prevPedidosCount = useRef(0);
-    
+
+  // FORMULARIOS
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -102,7 +102,6 @@ export default function AdminPage() {
   const [newPizzaPortions, setNewPizzaPortions] = useState(4); 
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
-    
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
@@ -126,10 +125,8 @@ export default function AdminPage() {
 
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
-
-  // ESTADOS QUE FALTABAN
   const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
-  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string | number>>({});
+  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -219,17 +216,15 @@ export default function AdminPage() {
     }
   }, [autenticado]);
 
-  // --- ONLINE USERS TRACKING (ADMIN) ---
+  // ONLINE USERS
   useEffect(() => {
     if (!autenticado) return;
     const presenceChannel = supabase.channel('online-users', { config: { presence: { key: 'admin' }, }, });
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
-        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
-        // Correctly map the name sent by the guest
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
@@ -546,6 +541,9 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
+        {/* FONDO GRADIENTE ESTILO INVITADOS */}
+        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 -z-10 rounded-b-[3rem]`}></div>
+
        {/* HEADER EN DOS LINEAS */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
@@ -584,7 +582,7 @@ export default function AdminPage() {
                   </button>
               </div>
 
-              {/* LINEA 2: NAVEGACIÓN */}
+              {/* LINEA 2: NAVEGACIÓN (BOTONES PEQUEÑOS) */}
               <div className="flex gap-2">
                   <button onClick={()=>window.location.href='/'} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-green-500`}><Users size={18}/></button>
                   <button onClick={logout} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={18}/></button>
@@ -626,7 +624,7 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* BARRA INFERIOR */}
+       {/* BARRA INFERIOR RESTAURADA */}
        <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
           <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
           <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>

@@ -16,7 +16,7 @@ export const KitchenView = ({
     
     const [filter, setFilter] = useState<'all' | 'with_orders' | 'pending' | 'cooking' | 'ready'>('with_orders');
     
-    // Estado para selección múltiple: { [pizzaId]: [pedidoId1, pedidoId2] }
+    // Estado para selección múltiple
     const [selectedOrders, setSelectedOrders] = useState<Record<string, string[]>>({});
     
     // ESTADO LOCAL PARA EL TIMER
@@ -75,15 +75,9 @@ export const KitchenView = ({
         return true;
     });
 
-    if (filteredMetrics.length === 0) return (
-        <div className={`text-center py-20 opacity-50 ${base.subtext}`}>
-            <ChefHat size={40} className="mx-auto mb-2 opacity-30"/>
-            <p>No hay items en esta categoría</p>
-        </div>
-    );
-
     return (
         <div className="space-y-4 pb-24">
+            {/* FILTROS SIEMPRE VISIBLES */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button onClick={() => setFilter('with_orders')} className={getFilterBtnClass(filter === 'with_orders')}>Con Pedidos</button>
                 <button onClick={() => setFilter('all')} className={getFilterBtnClass(filter === 'all')}>Todas</button>
@@ -92,162 +86,164 @@ export const KitchenView = ({
                 <button onClick={() => setFilter('ready')} className={getFilterBtnClass(filter === 'ready')}>Listas</button>
             </div>
 
-            <div className="grid gap-3">
-                {filteredMetrics.map((p: any) => {
-                    const statusConfig = getStatusConfig(p);
-                    const pendingList = p.pedidosPendientes?.filter((o:any) => o.estado === 'pendiente') || [];
-                    const cookingList = p.pedidosPendientes?.filter((o:any) => o.estado === 'cocinando') || [];
-                    
-                    const selection = selectedOrders[p.id] || [];
-                    const hasSelection = selection.length > 0;
+            {/* CONTENIDO O MENSAJE VACÍO */}
+            {filteredMetrics.length === 0 ? (
+                <div className={`text-center py-20 opacity-50 ${base.subtext}`}>
+                    <ChefHat size={40} className="mx-auto mb-2 opacity-30"/>
+                    <p>No hay items en esta categoría</p>
+                </div>
+            ) : (
+                <div className="grid gap-3">
+                    {filteredMetrics.map((p: any) => {
+                        const statusConfig = getStatusConfig(p);
+                        const pendingList = p.pedidosPendientes?.filter((o:any) => o.estado === 'pendiente') || [];
+                        const cookingList = p.pedidosPendientes?.filter((o:any) => o.estado === 'cocinando') || [];
+                        
+                        const selection = selectedOrders[p.id] || [];
+                        const hasSelection = selection.length > 0;
 
-                    const selectedArePending = hasSelection && selection.every(id => pendingList.some((o:any) => o.id === id));
-                    const selectedAreCooking = hasSelection && selection.every(id => cookingList.some((o:any) => o.id === id));
+                        const selectedArePending = hasSelection && selection.every(id => pendingList.some((o:any) => o.id === id));
+                        const selectedAreCooking = hasSelection && selection.every(id => cookingList.some((o:any) => o.id === id));
 
-                    // CALCULO TIEMPO RESTANTE
-                    let timeLeft = 0;
-                    let progress = 0;
-                    if (p.cocinando && p.cocinando_inicio) {
-                        const startTime = new Date(p.cocinando_inicio).getTime();
-                        const durationMs = (p.tiempo_coccion || 0) * 1000; 
-                        const elapsed = now - startTime;
-                        timeLeft = Math.max(0, (durationMs - elapsed) / 1000);
-                        progress = p.tiempo_coccion > 0 ? ((p.tiempo_coccion - timeLeft) / p.tiempo_coccion) * 100 : 0;
-                    }
+                        // CALCULO TIEMPO RESTANTE
+                        let timeLeft = 0;
+                        let progress = 0;
+                        if (p.cocinando && p.cocinando_inicio) {
+                            const startTime = new Date(p.cocinando_inicio).getTime();
+                            const durationMs = (p.tiempo_coccion || 0) * 1000; 
+                            const elapsed = now - startTime;
+                            timeLeft = Math.max(0, (durationMs - elapsed) / 1000);
+                            progress = p.tiempo_coccion > 0 ? ((p.tiempo_coccion - timeLeft) / p.tiempo_coccion) * 100 : 0;
+                        }
 
-                    return (
-                        <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'border-orange-500/50 ring-1 ring-orange-500/20' : ''} ${isCompact ? 'p-3' : 'p-4'}`}>
-                             {/* BARRA DE PROGRESO DE FONDO */}
-                             {p.cocinando && (
-                                 <div className="absolute top-0 left-0 bottom-0 bg-orange-500/10 transition-all duration-1000 ease-linear pointer-events-none" style={{ width: `${progress}%` }}></div>
-                             )}
+                        return (
+                            <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'border-orange-500/50 ring-1 ring-orange-500/20' : ''} ${isCompact ? 'p-3' : 'p-4'}`}>
+                                {p.cocinando && (
+                                    <div className="absolute top-0 left-0 bottom-0 bg-orange-500/10 transition-all duration-1000 ease-linear pointer-events-none" style={{ width: `${progress}%` }}></div>
+                                )}
 
-                             <div className="relative z-10">
-                                 <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <h3 className={`font-black text-xl leading-none ${currentTheme.text}`}>{p.nombre}</h3>
-                                        {p.cocinando && (
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-xs font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                                                    <Flame size={10} fill="white"/> {statusConfig.textReady}
-                                                </span>
-                                                <span className="text-xs font-mono font-bold opacity-60">
-                                                    {formatTime(timeLeft)}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {!p.cocinando && <p className={`text-xs mt-1 ${base.subtext}`}>Lote de {p.target} u.</p>}
-                                    </div>
-                                    <div className="text-right">
-                                        <span className={`text-2xl font-black ${p.totalPendientes > 0 ? (isDarkMode ? 'text-white' : 'text-black') : 'text-gray-400'}`}>{p.totalPendientes}</span>
-                                        {p.cocinando && <p className="text-[8px] uppercase font-bold opacity-50">Total</p>}
-                                    </div>
-                                 </div>
-
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                    {/* EN ESPERA */}
-                                    <div className={`p-2 rounded-xl border relative flex flex-col ${base.innerCard}`}>
-                                        <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
-                                            <div className="flex items-center gap-1 text-gray-500 text-xs font-bold uppercase"><Clock size={12}/> Espera ({p.enEspera})</div>
-                                            
-                                            {/* BOTÓN REVERTIR ESPERA (Pasa la selección) */}
-                                            {p.enEspera > 0 && (
-                                                <button 
-                                                    onClick={() => {
-                                                        revertirEstado(p, 'cancelar_espera', selectedArePending ? selection : []);
-                                                        setSelectedOrders(prev => ({...prev, [p.id]: []})); 
-                                                    }} 
-                                                    className="text-red-500 hover:bg-red-500/10 p-1 rounded transition-colors"
-                                                    title={selectedArePending ? `Cancelar ${selection.length} seleccionados` : "Cancelar TODOS"}
-                                                >
-                                                    <Trash2 size={14}/>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                            {pendingList.map((ord: any) => (
-                                                <div key={ord.id} onClick={() => handleSelectOrder(p.id, ord.id)} className={`text-xs p-1.5 rounded flex items-center justify-between cursor-pointer border ${selection.includes(ord.id) ? 'bg-blue-500/20 border-blue-500' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold">{ord.invitado_nombre}</span>
-                                                        {ord.detalles_adicionales?.length > 0 && <span className="text-[10px] opacity-70 text-orange-500">+ {ord.detalles_adicionales.join(', ')}</span>}
-                                                    </div>
-                                                    {selection.includes(ord.id) ? <CheckSquare size={14} className="text-blue-500"/> : <Square size={14} className="opacity-30"/>}
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className={`font-black text-xl leading-none ${currentTheme.text}`}>{p.nombre}</h3>
+                                            {p.cocinando && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-xs font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                                        <Flame size={10} fill="white"/> {statusConfig.textReady}
+                                                    </span>
+                                                    <span className="text-xs font-mono font-bold opacity-60">
+                                                        {formatTime(timeLeft)}
+                                                    </span>
                                                 </div>
-                                            ))}
-                                            {pendingList.length === 0 && <span className="text-[10px] opacity-30 italic">Vacío</span>}
-                                        </div>
-                                    </div>
-
-                                    {/* EN HORNO */}
-                                    <div className={`p-2 rounded-xl border relative flex flex-col ${p.cocinando ? 'bg-orange-500/10 border-orange-500/30' : base.innerCard}`}>
-                                        <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
-                                            <div className={`flex items-center gap-1 text-xs font-bold uppercase ${p.cocinando ? 'text-orange-500' : 'text-gray-500'}`}>
-                                                <Flame size={12} className={p.cocinando ? 'animate-bounce' : ''}/> Horno ({p.enHorno})
-                                            </div>
-                                            
-                                            {/* BOTÓN SACAR DE HORNO (Pasa la selección) */}
-                                            {p.enHorno > 0 && (
-                                                <button 
-                                                    onClick={() => {
-                                                        revertirEstado(p, 'sacar_horno', selectedAreCooking ? selection : []);
-                                                        setSelectedOrders(prev => ({...prev, [p.id]: []}));
-                                                    }} 
-                                                    className="text-gray-500 hover:bg-white/20 p-1 rounded transition-colors"
-                                                    title={selectedAreCooking ? `Devolver ${selection.length} seleccionados` : "Devolver TODOS"}
-                                                >
-                                                    <RotateCcw size={14}/>
-                                                </button>
                                             )}
+                                            {!p.cocinando && <p className={`text-xs mt-1 ${base.subtext}`}>Lote de {p.target} u.</p>}
                                         </div>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                            {cookingList.map((ord: any) => (
-                                                <div key={ord.id} onClick={() => handleSelectOrder(p.id, ord.id)} className={`text-xs p-1.5 rounded flex items-center justify-between cursor-pointer border ${selection.includes(ord.id) ? 'bg-green-500/20 border-green-500' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold">{ord.invitado_nombre}</span>
-                                                        {ord.detalles_adicionales?.length > 0 && <span className="text-[10px] opacity-70 text-orange-500">+ {ord.detalles_adicionales.join(', ')}</span>}
-                                                    </div>
-                                                    {selection.includes(ord.id) ? <CheckSquare size={14} className="text-green-500"/> : <Square size={14} className="opacity-30"/>}
-                                                </div>
-                                            ))}
-                                            {cookingList.length === 0 && <span className="text-[10px] opacity-30 italic">Vacío</span>}
+                                        <div className="text-right">
+                                            <span className={`text-2xl font-black ${p.totalPendientes > 0 ? (isDarkMode ? 'text-white' : 'text-black') : 'text-gray-400'}`}>{p.totalPendientes}</span>
+                                            {p.cocinando && <p className="text-[8px] uppercase font-bold opacity-50">Total</p>}
                                         </div>
                                     </div>
-                                 </div>
 
-                                 {/* ACCIONES PRINCIPALES */}
-                                 <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => {
-                                            toggleCocinando(p, selectedArePending ? selection : undefined);
-                                            setSelectedOrders(prev => ({...prev, [p.id]: []}));
-                                        }} 
-                                        disabled={p.enEspera === 0}
-                                        className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enEspera > 0 ? (selectedArePending ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white hover:bg-black dark:bg-white dark:text-black') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
-                                    >
-                                        {statusConfig.icon} {selectedArePending ? `COCINAR (${selection.length})` : `COCINAR (AUTO)`}
-                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                        {/* EN ESPERA */}
+                                        <div className={`p-2 rounded-xl border relative flex flex-col ${base.innerCard}`}>
+                                            <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
+                                                <div className="flex items-center gap-1 text-gray-500 text-xs font-bold uppercase"><Clock size={12}/> Espera ({p.enEspera})</div>
+                                                {p.enEspera > 0 && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            revertirEstado(p, 'cancelar_espera', selectedArePending ? selection : []);
+                                                            setSelectedOrders(prev => ({...prev, [p.id]: []})); 
+                                                        }} 
+                                                        className="text-red-500 hover:bg-red-500/10 p-1 rounded transition-colors"
+                                                        title={selectedArePending ? `Cancelar ${selection.length} seleccionados` : "Cancelar TODOS"}
+                                                    >
+                                                        <Trash2 size={14}/>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                                                {pendingList.map((ord: any) => (
+                                                    <div key={ord.id} onClick={() => handleSelectOrder(p.id, ord.id)} className={`text-xs p-1.5 rounded flex items-center justify-between cursor-pointer border ${selection.includes(ord.id) ? 'bg-blue-500/20 border-blue-500' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold">{ord.invitado_nombre}</span>
+                                                            {ord.detalles_adicionales?.length > 0 && <span className="text-[10px] opacity-70 text-orange-500">+ {ord.detalles_adicionales.join(', ')}</span>}
+                                                        </div>
+                                                        {selection.includes(ord.id) ? <CheckSquare size={14} className="text-blue-500"/> : <Square size={14} className="opacity-30"/>}
+                                                    </div>
+                                                ))}
+                                                {pendingList.length === 0 && <span className="text-[10px] opacity-30 italic">Vacío</span>}
+                                            </div>
+                                        </div>
 
-                                    <button 
-                                        onClick={() => {
-                                            entregar(p, selectedAreCooking ? selection : undefined);
-                                            setSelectedOrders(prev => ({...prev, [p.id]: []}));
-                                        }} 
-                                        disabled={p.enHorno === 0}
-                                        className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enHorno > 0 ? (selectedAreCooking ? 'bg-green-600 text-white' : 'bg-green-600 text-white hover:bg-green-500') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
-                                    >
-                                        <CheckCircle size={14} /> {selectedAreCooking ? `ENTREGAR (${selection.length})` : `ENTREGAR (AUTO)`}
-                                    </button>
-                                 </div>
+                                        {/* EN HORNO */}
+                                        <div className={`p-2 rounded-xl border relative flex flex-col ${p.cocinando ? 'bg-orange-500/10 border-orange-500/30' : base.innerCard}`}>
+                                            <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
+                                                <div className={`flex items-center gap-1 text-xs font-bold uppercase ${p.cocinando ? 'text-orange-500' : 'text-gray-500'}`}>
+                                                    <Flame size={12} className={p.cocinando ? 'animate-bounce' : ''}/> Horno ({p.enHorno})
+                                                </div>
+                                                {p.enHorno > 0 && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            revertirEstado(p, 'sacar_horno', selectedAreCooking ? selection : []);
+                                                            setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                                        }} 
+                                                        className="text-gray-500 hover:bg-white/20 p-1 rounded transition-colors"
+                                                        title={selectedAreCooking ? `Devolver ${selection.length} seleccionados` : "Devolver TODOS"}
+                                                    >
+                                                        <RotateCcw size={14}/>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                                                {cookingList.map((ord: any) => (
+                                                    <div key={ord.id} onClick={() => handleSelectOrder(p.id, ord.id)} className={`text-xs p-1.5 rounded flex items-center justify-between cursor-pointer border ${selection.includes(ord.id) ? 'bg-green-500/20 border-green-500' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold">{ord.invitado_nombre}</span>
+                                                            {ord.detalles_adicionales?.length > 0 && <span className="text-[10px] opacity-70 text-orange-500">+ {ord.detalles_adicionales.join(', ')}</span>}
+                                                        </div>
+                                                        {selection.includes(ord.id) ? <CheckSquare size={14} className="text-green-500"/> : <Square size={14} className="opacity-30"/>}
+                                                    </div>
+                                                ))}
+                                                {cookingList.length === 0 && <span className="text-[10px] opacity-30 italic">Vacío</span>}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                 {/* ACCIONES SECUNDARIAS */}
-                                 <div className="flex gap-2 mt-2 justify-end">
-                                    {p.cocinando && <button onClick={() => forceStopCooking(p.id)} className="px-3 py-1 rounded-lg border border-red-500/30 text-[10px] text-red-500 hover:bg-red-500/10">STOP FORZOSO</button>}
-                                 </div>
-                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                                    {/* ACCIONES */}
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                toggleCocinando(p, selectedArePending ? selection : undefined);
+                                                setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                            }} 
+                                            disabled={p.enEspera === 0}
+                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enEspera > 0 ? (selectedArePending ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white hover:bg-black dark:bg-white dark:text-black') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
+                                        >
+                                            {statusConfig.icon} {selectedArePending ? `COCINAR (${selection.length})` : `COCINAR (AUTO)`}
+                                        </button>
+
+                                        <button 
+                                            onClick={() => {
+                                                entregar(p, selectedAreCooking ? selection : undefined);
+                                                setSelectedOrders(prev => ({...prev, [p.id]: []}));
+                                            }} 
+                                            disabled={p.enHorno === 0}
+                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enHorno > 0 ? (selectedAreCooking ? 'bg-green-600 text-white' : 'bg-green-600 text-white hover:bg-green-500') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
+                                        >
+                                            <CheckCircle size={14} /> {selectedAreCooking ? `ENTREGAR (${selection.length})` : `ENTREGAR (AUTO)`}
+                                        </button>
+                                    </div>
+
+                                    <div className="flex gap-2 mt-2 justify-end">
+                                        {p.cocinando && <button onClick={() => forceStopCooking(p.id)} className="px-3 py-1 rounded-lg border border-red-500/30 text-[10px] text-red-500 hover:bg-red-500/10">STOP FORZOSO</button>}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 };
