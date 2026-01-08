@@ -63,8 +63,9 @@ export const OrdersView = ({
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={`p-2 rounded-full bg-gray-100 dark:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                        <ChevronDown size={16} className="opacity-50"/>
+                                    {/* CORRECCIÓN: Fondo oscuro en modo oscuro */}
+                                    <div className={`p-2 rounded-full bg-gray-100 dark:bg-neutral-800 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <ChevronDown size={16} className="opacity-50 dark:text-white"/>
                                     </div>
                                 </div>
 

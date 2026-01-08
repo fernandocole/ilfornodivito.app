@@ -68,17 +68,13 @@ export default function AdminPage() {
   const [view, setView] = useState<'cocina' | 'pedidos' | 'menu' | 'ingredientes' | 'usuarios' | 'config' | 'ranking' | 'logs'>('cocina');
   const [sessionDuration, setSessionDuration] = useState(24 * 60 * 60 * 1000); 
 
+  // --- ESTADOS ---
   const [menuTypeFilter, setMenuTypeFilter] = useState<'all' | 'pizza' | 'burger' | 'other'>('all');
   const [menuSortOrder, setMenuSortOrder] = useState<'alpha' | 'type' | 'date'>('alpha');
   const [inventoryFilterCategory, setInventoryFilterCategory] = useState<string>('Todos');
+
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
   const [imageToView, setImageToView] = useState<string | null>(null);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState(0);
-  const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
-  const [edits, setEdits] = useState<Record<string, any>>({});
-  const [invitadosCount, setInvitadosCount] = useState(0);
-  const prevPedidosCount = useRef(0);
 
   const [pedidos, setPedidos] = useState<any[]>([]); 
   const [pizzas, setPizzas] = useState<any[]>([]);
@@ -87,10 +83,17 @@ export default function AdminPage() {
   const [adicionales, setAdicionales] = useState<any[]>([]); 
   const [reservedState, setReservedState] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<any[]>([]);
+    
+  const [edits, setEdits] = useState<Record<string, any>>({});
   const [invitadosDB, setInvitadosDB] = useState<any[]>([]); 
   const [valoraciones, setValoraciones] = useState<any[]>([]);
   const [config, setConfig] = useState<any>({ porciones_por_pizza: 4, total_invitados: 10, password_invitados: '', categoria_activa: '["General"]', mensaje_bienvenida: '', tiempo_recordatorio_minutos: 10 });
-  
+  const [invitadosCount, setInvitadosCount] = useState(0);
+  const [onlineUsers, setOnlineUsers] = useState(0);
+  const [onlineGuestList, setOnlineGuestList] = useState<string[]>([]);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const prevPedidosCount = useRef(0);
+    
   const [newPizzaName, setNewPizzaName] = useState('');
   const [newPizzaDesc, setNewPizzaDesc] = useState('');
   const [newPizzaImg, setNewPizzaImg] = useState('');
@@ -99,6 +102,7 @@ export default function AdminPage() {
   const [newPizzaPortions, setNewPizzaPortions] = useState(4); 
   const [newPizzaType, setNewPizzaType] = useState<'pizza' | 'burger' | 'other'>('pizza');
   const [uploading, setUploading] = useState(false);
+    
   const [newPizzaIngredients, setNewPizzaIngredients] = useState<{ingrediente_id: string, nombre: string, cantidad: number}[]>([]);
   const [newPizzaSelectedIng, setNewPizzaSelectedIng] = useState('');
   const [newPizzaRecipeQty, setNewPizzaRecipeQty] = useState<string | number>('');
@@ -122,8 +126,10 @@ export default function AdminPage() {
 
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [cleanForm, setCleanForm] = useState({ from: '', to: '', status: 'all', restock: false });
+
+  // ESTADOS QUE FALTABAN
   const [tempRecipeIng, setTempRecipeIng] = useState<Record<string, string>>({});
-  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string|number>>({});
+  const [tempRecipeQty, setTempRecipeQty] = useState<Record<string, string | number>>({});
 
   const [currentTheme, setCurrentTheme] = useState(THEMES[0]);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -169,12 +175,18 @@ export default function AdminPage() {
            const pizza = pizzas.find((p:any) => p.id === pedido.pizza_id);
            const portions = pizza?.porciones_individuales || config.porciones_por_pizza || 8;
            const fraccion = pedido.cantidad_porciones / portions;
+           
            const rec = recetas.filter((r: any) => r.pizza_id === pedido.pizza_id);
-           rec.forEach((item: any) => { reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion); });
-           if(pedido.detalles_adicionales) {
+           rec.forEach((item: any) => {
+               reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion);
+           });
+
+           if(pedido.detalles_adicionales && pedido.detalles_adicionales.length > 0) {
               pedido.detalles_adicionales.forEach((extraName: string) => {
                   const adiDef = adicionales.find(a => a.pizza_id === pedido.pizza_id && a.nombre_visible === extraName);
-                  if(adiDef) { reservedStock[adiDef.ingrediente_id] = (reservedStock[adiDef.ingrediente_id] || 0) + adiDef.cantidad_requerida; }
+                  if(adiDef) {
+                       reservedStock[adiDef.ingrediente_id] = (reservedStock[adiDef.ingrediente_id] || 0) + adiDef.cantidad_requerida;
+                  }
               });
            }
        });
@@ -207,15 +219,17 @@ export default function AdminPage() {
     }
   }, [autenticado]);
 
-  // ONLINE USERS
+  // --- ONLINE USERS TRACKING (ADMIN) ---
   useEffect(() => {
     if (!autenticado) return;
     const presenceChannel = supabase.channel('online-users', { config: { presence: { key: 'admin' }, }, });
     presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const allPresences = Object.values(state).flat() as any[];
+        // Filter roles and ensure names are captured
         const guests = allPresences.filter((p: any) => p.role === 'guest');
         setOnlineUsers(guests.length);
+        // Correctly map the name sent by the guest
         setOnlineGuestList(guests.map((g: any) => g.name || 'Invitado').filter((n: string) => n));
     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString(), role: 'admin' }); });
     return () => { supabase.removeChannel(presenceChannel); };
@@ -446,7 +460,6 @@ export default function AdminPage() {
       }
   };
   
-  // FUNCION NUEVA PARA ACTUALIZAR TOTAL INVITADOS
   const updateTotalGuests = async (n: number) => {
      const val = Math.max(0, n);
      setConfig({ ...config, total_invitados: val });
@@ -510,6 +523,7 @@ export default function AdminPage() {
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
 
 
+  // RENDERIZADO LOGIN RESTAURADO CON LOGO Y INPUT
   if (!autenticado) {
       return (
           <div className={`min-h-screen flex items-center justify-center p-4 pb-40 ${base.bg}`}>
@@ -532,6 +546,7 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
+       {/* HEADER EN DOS LINEAS */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
               <img src="/logo.png" className="h-10 w-auto" />
@@ -542,8 +557,9 @@ export default function AdminPage() {
                   </p>
               </div>
           </div>
+          
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
-              {/* Row 1: Tools */}
+              {/* LINEA 1: HERRAMIENTAS */}
               <div className="flex gap-2">
                   <div className="relative">
                       <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${currentTheme.text}`}>
@@ -567,17 +583,19 @@ export default function AdminPage() {
                       {orden === 'estado' ? <ArrowUpNarrowWide size={20}/> : <ArrowDownAZ size={20}/>}
                   </button>
               </div>
-              {/* Row 2: Navigation */}
+
+              {/* LINEA 2: NAVEGACIÓN */}
               <div className="flex gap-2">
-                  <button onClick={()=>window.location.href='/'} className={`p-2 rounded-full border shadow-lg ${base.bar} text-green-500`}><Users size={20}/></button>
-                  <button onClick={logout} className={`p-2 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={20}/></button>
+                  <button onClick={()=>window.location.href='/'} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-green-500`}><Users size={18}/></button>
+                  <button onClick={logout} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={18}/></button>
               </div>
           </div>
        </div>
 
-       <div className="pt-24 px-4 pb-36 max-w-4xl mx-auto">
+       <div className="pt-32 px-4 pb-36 max-w-4xl mx-auto">
            {view === 'cocina' && (
                 <>
+                {/* BARRA DE ESTADO */}
                 <div className="grid grid-cols-4 gap-2 mb-4">
                     <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
                          <div className="flex items-center gap-1 opacity-60"><Users size={12}/><span className="text-[8px] font-bold uppercase">Espera</span></div>
@@ -608,7 +626,7 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* BARRA INFERIOR RESTAURADA */}
+       {/* BARRA INFERIOR */}
        <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
           <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
           <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>
@@ -620,22 +638,12 @@ export default function AdminPage() {
           <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
        </div>
 
-       {/* MODAL ONLINE USERS (Con edición de Total) */}
+       {/* MODAL ONLINE USERS (Sin input de invitados) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
                 <button onClick={() => setShowOnlineModal(false)} className="absolute top-4 right-4 text-gray-500"><X size={20}/></button>
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Users size={20} className="text-green-500"/> En Línea ({onlineUsers})</h3>
-                {/* EDITOR DE TOTAL INVITADOS */}
-                <div className="mb-4 flex items-center justify-between bg-neutral-100 dark:bg-neutral-800 p-3 rounded-xl">
-                     <span className="text-sm font-bold opacity-70">Total Esperado:</span>
-                     <input 
-                        type="number" 
-                        value={config.total_invitados || 0} 
-                        onChange={(e)=>updateTotalGuests(Number(e.target.value))} 
-                        className="w-16 text-center font-bold bg-transparent border-b border-gray-500 outline-none"
-                     />
-                </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                     {onlineGuestList.length > 0 ? onlineGuestList.map((u, i) => (
                         <div key={i} className={`p-3 rounded-xl border ${base.innerCard} flex items-center gap-2`}>
