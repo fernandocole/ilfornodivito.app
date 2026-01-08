@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, ChevronDown, ChevronUp, Power, Check } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp, Power, Check } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -59,10 +59,9 @@ export const MenuView = ({
 
     const handleSaveEdit = async (id: string) => {
         await savePizzaChanges(id);
-        // Opcional: setExpandedPizza(null) si quieres cerrar al guardar, si no, quítalo.
+        setExpandedPizza(null); // CONTRAER AL GUARDAR
     };
 
-    // Esta función maneja la activación rápida desde el botón de Power
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
         e.stopPropagation();
         updateP(id, 'activa', !currentState);
@@ -435,8 +434,9 @@ export const MenuView = ({
                                             </div>
                                      </div>
 
-                                     {/* FOOTER ACCIONES - AQUI ESTÁ LA CORRECCIÓN DEL BOTÓN GUARDAR */}
+                                     {/* FOOTER ACCIONES */}
                                      <div className={`flex gap-3 pt-4 border-t mt-4 items-center ${base.divider}`}>
+                                          {/* CAMBIO FOTO */}
                                           <div className={`relative group cursor-pointer w-12 h-12 rounded-xl overflow-hidden border-2 border-dashed border-gray-500/30 hover:border-blue-500 transition-colors flex items-center justify-center ${base.uploadBox}`} title="Cambiar Foto">
                                               <input type="file" accept="image/*" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={(e) => handleImageUpload(e, pizza.id)} />
                                               <Image size={20} className="opacity-40 group-hover:text-blue-500"/>
@@ -446,11 +446,23 @@ export const MenuView = ({
                                           <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
                                           
                                           <div className="flex-1 flex gap-3 justify-end">
-                                               {/* BOTONES VISIBLES: CANCELAR Y GUARDAR */}
-                                               <button onClick={() => cancelChanges(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
-                                               <button onClick={() => handleSaveEdit(pizza.id)} className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}>
-                                                   <Save size={18}/> Guardar Cambios
-                                               </button>
+                                              {/* BOTÓN GUARDAR Y CANCELAR SI HAY CAMBIOS */}
+                                              <button 
+                                                  onClick={() => {
+                                                      cancelChanges(pizza.id);
+                                                      setExpandedPizza(null);
+                                                  }} 
+                                                  className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}
+                                              >
+                                                  Cancelar
+                                              </button>
+                                              
+                                              <button 
+                                                  onClick={() => handleSaveEdit(pizza.id)} 
+                                                  className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}
+                                              >
+                                                  <Save size={18}/> Guardar Cambios
+                                              </button>
                                           </div>
                                      </div>
                                  </div>
