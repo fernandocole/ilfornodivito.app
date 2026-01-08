@@ -80,12 +80,12 @@ export const MenuView = ({
              {/* CABECERA */}
              <div className={`p-4 rounded-3xl border ${base.card} space-y-4 shadow-sm`}>
                 <div className="flex justify-between items-center">
-                    <h2 className={`text-xl font-bold flex items-center gap-2 ${currentTheme.text}`}>
+                    <h2 className={`text-xl font-bold flex items-center gap-2 ${base.text}`}>
                         <Edit3 /> Gestión del Menú
                     </h2>
                     <button 
                         onClick={() => setShowNewForm(!showNewForm)} 
-                        className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.bg} bg-black text-white hover:opacity-80`}`}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.color} text-white hover:opacity-80`}`}
                     >
                         {showNewForm ? <X size={16}/> : <Plus size={16}/>} {showNewForm ? 'Cerrar' : 'Nuevo Item'}
                     </button>
@@ -99,7 +99,7 @@ export const MenuView = ({
                             <button 
                                 key={cat}
                                 onClick={() => toggleCategory(cat)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-2 ${activeCategories.includes(cat) ? 'bg-green-500 text-white border-green-500' : base.buttonSec}`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-2 ${activeCategories.includes(cat) ? `${currentTheme.color} text-white border-transparent` : base.buttonSec}`}
                             >
                                 {activeCategories.includes(cat) ? <Check size={12} strokeWidth={4}/> : <div className="w-3"/>}
                                 {cat}
@@ -244,222 +244,224 @@ export const MenuView = ({
             
             {/* LISTA DE PLATOS */}
             <div className="space-y-4">
-                {filteredPizzas.map((pizza: any) => {
-                    const isEditing = edits[pizza.id];
-                    const currentRecipe = isEditing?.local_recipe || recetas.filter((r: any) => r.pizza_id === pizza.id);
-                    const stockReal = calcularStockDinamico(currentRecipe, ingredients);
-                    const hasChanges = isEditing && (Object.keys(isEditing).length > 0);
-                    const currentAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
-                    
-                    return (
-                        <div key={pizza.id} className={`${base.card} rounded-3xl overflow-hidden border shadow-sm transition-all`}>
-                            
-                            {/* VISTA RESUMIDA */}
-                            <div className={`flex p-4 gap-4 cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`} onClick={() => toggleExpand(pizza.id)}>
-                                <div className={`w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>
-                                    {pizza.imagen_url ? <img src={pizza.imagen_url} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center opacity-20"><Image/></div>}
-                                </div>
-                                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-lg leading-tight truncate">{pizza.nombre}</h3>
+                 {filteredPizzas.map((pizza: any) => {
+                     const isEditing = edits[pizza.id];
+                     const currentRecipe = isEditing?.local_recipe || recetas.filter((r: any) => r.pizza_id === pizza.id);
+                     const stockReal = calcularStockDinamico(currentRecipe, ingredients);
+                     const hasChanges = isEditing && (Object.keys(isEditing).length > 0);
+                     const currentAdicionales = adicionales ? adicionales.filter((a:any) => a.pizza_id === pizza.id) : [];
+                     
+                     return (
+                         <div key={pizza.id} className={`${base.card} rounded-3xl overflow-hidden border shadow-sm transition-all`}>
+                             
+                             {/* VISTA RESUMIDA */}
+                             <div className={`flex p-4 gap-4 cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`} onClick={() => toggleExpand(pizza.id)}>
+                                 <div className={`w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>
+                                     {pizza.imagen_url ? <img src={pizza.imagen_url} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center opacity-20"><Image/></div>}
+                                 </div>
+                                 <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                     <div className="flex justify-between items-start">
+                                         <div>
+                                            <h3 className={`font-bold text-lg leading-tight truncate ${base.text}`}>{pizza.nombre}</h3>
                                             <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
-                                        </div>
-                                        <button 
-                                            onClick={(e) => handleQuickToggle(e, pizza.id, pizza.activa)}
-                                            className={`p-2 rounded-full transition-all ${pizza.activa ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-gray-300 dark:bg-neutral-700 text-gray-500'}`}
-                                            title="Activar / Desactivar"
-                                        >
-                                            <Power size={16} />
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="flex gap-3 mt-2 text-xs items-center">
-                                        <div className={`flex items-center gap-1 font-mono px-2 py-1 rounded ${stockReal > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                            <span className="font-bold">{stockReal}</span> <span className="opacity-70">disp.</span>
-                                        </div>
-                                        <span className="flex items-center gap-1 opacity-60"><Clock size={12}/> {Math.floor(pizza.tiempo_coccion/60)}m {pizza.tiempo_coccion%60}s</span>
-                                        <span className="opacity-40">•</span>
-                                        <span className="opacity-60 uppercase font-bold text-[10px]">{pizza.tipo}</span>
-                                    </div>
-                                </div>
-                            </div>
+                                         </div>
+                                         <button 
+                                             onClick={(e) => handleQuickToggle(e, pizza.id, pizza.activa)}
+                                             className={`p-2 rounded-full transition-all ${pizza.activa ? `${currentTheme.color} text-white shadow-lg` : 'bg-gray-300 dark:bg-neutral-700 text-gray-500'}`}
+                                             title="Activar / Desactivar"
+                                         >
+                                             <Power size={16} />
+                                         </button>
+                                     </div>
+                                     
+                                     <div className="flex gap-3 mt-2 text-xs items-center">
+                                            <div className={`flex items-center gap-1 font-mono px-2 py-1 rounded ${stockReal > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                <span className="font-bold">{stockReal}</span> <span className="opacity-70">disp.</span>
+                                            </div>
+                                            <span className="flex items-center gap-1 opacity-60"><Clock size={12}/> {Math.floor(pizza.tiempo_coccion/60)}m {pizza.tiempo_coccion%60}s</span>
+                                            <span className="opacity-40">•</span>
+                                            <span className="opacity-60 uppercase font-bold text-[10px]">{pizza.tipo}</span>
+                                     </div>
+                                 </div>
+                             </div>
 
-                            {/* ZONA EXPANDIDA DE EDICIÓN */}
-                            {expandedPizza === pizza.id && (
-                                <div className={`p-5 border-t ${base.divider} ${isDarkMode ? 'bg-neutral-950' : 'bg-neutral-50'} space-y-6 animate-in slide-in-from-top-2`}>
-                                    
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {/* COLUMNA 1 */}
-                                        <div className="space-y-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold uppercase opacity-40">Nombre</label>
-                                                <input value={isEditing?.nombre ?? pizza.nombre} onChange={e => updateP(pizza.id, 'nombre', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold uppercase opacity-40">Descripción</label>
-                                                <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => updateP(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
-                                            </div>
-                                            
-                                            <div className="flex gap-4">
-                                                {/* SELECTOR DE TIPO (NUEVO) */}
-                                                <div className="flex-1 space-y-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40">Tipo</label>
-                                                    <select 
-                                                        value={isEditing?.tipo ?? pizza.tipo} 
-                                                        onChange={e => updateP(pizza.id, 'tipo', e.target.value)} 
-                                                        className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}
-                                                    >
-                                                        <option value="pizza">Pizza</option>
-                                                        <option value="burger">Hamburguesa</option>
-                                                        <option value="other">Otro</option>
-                                                    </select>
+                             {/* ZONA EXPANDIDA DE EDICIÓN */}
+                             {expandedPizza === pizza.id && (
+                                 <div className={`p-5 border-t ${base.divider} ${isDarkMode ? 'bg-neutral-950' : 'bg-neutral-50'} space-y-6 animate-in slide-in-from-top-2`}>
+                                     
+                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            {/* COLUMNA 1 */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold uppercase opacity-40">Nombre</label>
+                                                    <input value={isEditing?.nombre ?? pizza.nombre} onChange={e => updateP(pizza.id, 'nombre', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold uppercase opacity-40">Descripción</label>
+                                                    <textarea value={isEditing?.descripcion ?? pizza.descripcion} onChange={e => updateP(pizza.id, 'descripcion', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none resize-none h-20 ${base.input}`} />
+                                                </div>
+                                                
+                                                <div className="flex gap-4">
+                                                    {/* SELECTOR DE TIPO (NUEVO) */}
+                                                    <div className="flex-1 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase opacity-40">Tipo</label>
+                                                        <select 
+                                                            value={isEditing?.tipo ?? pizza.tipo} 
+                                                            onChange={e => updateP(pizza.id, 'tipo', e.target.value)} 
+                                                            className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`}
+                                                        >
+                                                            <option value="pizza">Pizza</option>
+                                                            <option value="burger">Hamburguesa</option>
+                                                            <option value="other">Otro</option>
+                                                        </select>
+                                                    </div>
 
-                                                <div className="flex-1 space-y-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40">Categoría</label>
-                                                    <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => updateP(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
-                                                    <datalist id="categories-list-edit">{uniqueCategories.map((c:string) => <option key={c} value={c} />)}</datalist>
+                                                    <div className="flex-1 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase opacity-40">Categoría</label>
+                                                        <input list="categories-list-edit" value={isEditing?.categoria ?? pizza.categoria} onChange={e => updateP(pizza.id, 'categoria', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
+                                                        <datalist id="categories-list-edit">{uniqueCategories.map((c:string) => <option key={c} value={c} />)}</datalist>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            
-                                            <div className={`flex gap-4 p-3 rounded-xl border ${base.card}`}>
-                                                <div className="flex-1">
-                                                    <label className="text-[10px] font-bold uppercase opacity-40 mb-1 block">Tiempo (Min : Seg)</label>
-                                                    <div className="flex gap-1 items-center">
-                                                        <input 
-                                                            type="number" 
-                                                            value={Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60)} 
-                                                            onChange={e => updateP(pizza.id, 'tiempo_coccion', (Number(e.target.value) * 60) + ((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60))} 
-                                                            className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
-                                                        />
-                                                        <span className="font-bold opacity-30">:</span>
-                                                        <input 
-                                                            type="number" 
-                                                            value={(isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60} 
-                                                            onChange={e => updateP(pizza.id, 'tiempo_coccion', (Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60) * 60) + Number(e.target.value))} 
-                                                            className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
-                                                        />
+                                                
+                                                <div className={`flex gap-4 p-3 rounded-xl border ${base.card}`}>
+                                                    <div className="flex-1">
+                                                        <label className="text-[10px] font-bold uppercase opacity-40 mb-1 block">Tiempo (Min : Seg)</label>
+                                                        <div className="flex gap-1 items-center">
+                                                            <input 
+                                                                type="number" 
+                                                                value={Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60)} 
+                                                                onChange={e => updateP(pizza.id, 'tiempo_coccion', (Number(e.target.value) * 60) + ((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60))} 
+                                                                className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
+                                                            />
+                                                            <span className="font-bold opacity-30">:</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={(isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) % 60} 
+                                                                onChange={e => updateP(pizza.id, 'tiempo_coccion', (Math.floor((isEditing?.tiempo_coccion ?? pizza.tiempo_coccion) / 60) * 60) + Number(e.target.value))} 
+                                                                className={`w-full p-2 rounded-lg text-sm border outline-none text-center ${base.input}`} 
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* COLUMNA 2 */}
-                                        <div className="space-y-4">
-                                            {/* RECETA */}
-                                            <div className={`border rounded-2xl p-4 ${base.card}`}>
-                                                <label className="text-xs font-bold uppercase opacity-50 block mb-3">Receta Base</label>
-                                                <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
-                                                    {currentRecipe.map((r: any, idx: number) => {
-                                                        const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
-                                                        return (
-                                                            <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
-                                                                <span className={currentTheme.text}>{ing?.nombre || r.nombre}</span>
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className={`font-mono opacity-50 px-1.5 py-0.5 rounded border border-current ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>{r.cantidad_requerida} {ing?.unidad}</span>
-                                                                    <button onClick={() => removeFromExistingPizza(pizza.id, idx, currentRecipe)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
+                                            {/* COLUMNA 2 */}
+                                            <div className="space-y-4">
+                                                {/* RECETA */}
+                                                <div className={`border rounded-2xl p-4 ${base.card}`}>
+                                                    <label className="text-xs font-bold uppercase opacity-50 block mb-3">Receta Base</label>
+                                                    <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
+                                                        {currentRecipe.map((r: any, idx: number) => {
+                                                            const ing = ingredients.find((i: any) => i.id === r.ingrediente_id);
+                                                            return (
+                                                                <div key={idx} className={`flex justify-between items-center text-xs p-2 rounded-lg shadow-sm border bg-neutral-500/10 border-neutral-500/20`}>
+                                                                    <span className={base.text}>{ing?.nombre || r.nombre}</span>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className={`font-mono opacity-50 px-1.5 py-0.5 rounded border border-current ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>{r.cantidad_requerida} {ing?.unidad}</span>
+                                                                        <button onClick={() => removeFromExistingPizza(pizza.id, idx, currentRecipe)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <select 
+                                                            className={`flex-1 p-2 rounded-lg text-xs border outline-none ${base.input}`}
+                                                            value={tempRecipeIng[pizza.id] || ''}
+                                                            onChange={e => setTempRecipeIng({...tempRecipeIng, [pizza.id]: e.target.value})}
+                                                        >
+                                                            <option value="">+ Ingrediente</option>
+                                                            {ingredients.map((i: any) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+                                                        </select>
+                                                        <input 
+                                                            type="number" 
+                                                            className={`w-16 p-2 rounded-lg text-xs border outline-none ${base.input}`} 
+                                                            placeholder="Cant"
+                                                            value={tempRecipeQty[pizza.id] || ''}
+                                                            onChange={e => setTempRecipeQty({...tempRecipeQty, [pizza.id]: e.target.value})}
+                                                        />
+                                                        <button 
+                                                            onClick={() => {
+                                                                const ingId = tempRecipeIng[pizza.id];
+                                                                const qty = tempRecipeQty[pizza.id];
+                                                                const ingName = ingredients.find((i:any) => i.id === ingId)?.nombre;
+                                                                if(ingId && qty && ingName) addToExistingPizza(pizza.id, ingId, ingName, qty, currentRecipe);
+                                                                setTempRecipeIng({...tempRecipeIng, [pizza.id]: ''});
+                                                                setTempRecipeQty({...tempRecipeQty, [pizza.id]: ''});
+                                                            }}
+                                                            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-500"
+                                                        ><Plus size={16}/></button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <select 
-                                                        className={`flex-1 p-2 rounded-lg text-xs border outline-none ${base.input}`}
-                                                        value={tempRecipeIng[pizza.id] || ''}
-                                                        onChange={e => setTempRecipeIng({...tempRecipeIng, [pizza.id]: e.target.value})}
-                                                    >
-                                                        <option value="">+ Ingrediente</option>
-                                                        {ingredients.map((i: any) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                                                    </select>
-                                                    <input 
-                                                        type="number" 
-                                                        className={`w-16 p-2 rounded-lg text-xs border outline-none ${base.input}`} 
-                                                        placeholder="Cant"
-                                                        value={tempRecipeQty[pizza.id] || ''}
-                                                        onChange={e => setTempRecipeQty({...tempRecipeQty, [pizza.id]: e.target.value})}
-                                                    />
-                                                    <button 
-                                                        onClick={() => {
-                                                            const ingId = tempRecipeIng[pizza.id];
-                                                            const qty = tempRecipeQty[pizza.id];
-                                                            const ingName = ingredients.find((i:any) => i.id === ingId)?.nombre;
-                                                            if(ingId && qty && ingName) addToExistingPizza(pizza.id, ingId, ingName, qty, currentRecipe);
-                                                            setTempRecipeIng({...tempRecipeIng, [pizza.id]: ''});
-                                                            setTempRecipeQty({...tempRecipeQty, [pizza.id]: ''});
-                                                        }}
-                                                        className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-500"
-                                                    ><Plus size={16}/></button>
+
+                                                {/* ADICIONALES */}
+                                                <div className={`border rounded-2xl p-4 ${base.card}`}>
+                                                    <label className="text-xs font-bold uppercase opacity-50 block mb-3 text-purple-500">Adicionales / Extras</label>
+                                                    <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
+                                                        {currentAdicionales.map((adi: any) => {
+                                                            const ingName = ingredients.find((i:any) => i.id === adi.ingrediente_id)?.nombre || '???';
+                                                            return (
+                                                                <div key={adi.id} className={`flex justify-between items-center text-xs p-2 rounded-lg mb-1 bg-purple-500/10 border border-purple-500/20`}>
+                                                                    <div>
+                                                                        <span className="font-bold block">{adi.nombre_visible}</span>
+                                                                        <span className="opacity-50 text-[10px]">Descuenta: {adi.cantidad_requerida} de {ingName}</span>
+                                                                    </div>
+                                                                    <button onClick={() => delAdicional(adi.id)} className="text-red-500 p-1 hover:bg-red-500/10 rounded"><Trash2 size={14}/></button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {currentAdicionales.length === 0 && <p className="text-[10px] opacity-30 italic text-center">Sin extras configurados</p>}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                                        <input value={editAdiName} onChange={e => setEditAdiName(e.target.value)} placeholder="Nombre visible" className={`p-2 rounded-lg text-xs border outline-none ${base.input}`}/>
+                                                        <input value={editAdiQty} onChange={e => setEditAdiQty(e.target.value)} placeholder="Cant." type="number" className={`p-2 rounded-lg text-xs border outline-none ${base.input}`}/>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <select value={editAdiIng} onChange={e => setEditAdiIng(e.target.value)} className={`flex-1 p-2 rounded-lg text-xs border outline-none ${base.input}`}>
+                                                            <option value="">Ingrediente del stock...</option>
+                                                            {ingredients.map((i: any) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+                                                        </select>
+                                                        <button 
+                                                            onClick={() => {
+                                                                addAdicional(pizza.id, editAdiIng, Number(editAdiQty), editAdiName);
+                                                                setEditAdiName(''); setEditAdiQty(''); setEditAdiIng('');
+                                                            }} 
+                                                            disabled={!editAdiName || !editAdiQty || !editAdiIng}
+                                                            className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-500 disabled:opacity-50"
+                                                        ><Plus size={16}/></button>
+                                                    </div>
                                                 </div>
                                             </div>
+                                     </div>
 
-                                            {/* ADICIONALES */}
-                                            <div className={`border rounded-2xl p-4 ${base.card}`}>
-                                                <label className="text-xs font-bold uppercase opacity-50 block mb-3 text-purple-500">Adicionales / Extras</label>
-                                                <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
-                                                    {currentAdicionales.map((adi: any) => {
-                                                        const ingName = ingredients.find((i:any) => i.id === adi.ingrediente_id)?.nombre || '???';
-                                                        return (
-                                                            <div key={adi.id} className={`flex justify-between items-center text-xs p-2 rounded-lg mb-1 bg-purple-500/10 border border-purple-500/20`}>
-                                                                <div>
-                                                                    <span className="font-bold block">{adi.nombre_visible}</span>
-                                                                    <span className="opacity-50 text-[10px]">Descuenta: {adi.cantidad_requerida} de {ingName}</span>
-                                                                </div>
-                                                                <button onClick={() => delAdicional(adi.id)} className="text-red-500 p-1 hover:bg-red-500/10 rounded"><Trash2 size={14}/></button>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {currentAdicionales.length === 0 && <p className="text-[10px] opacity-30 italic text-center">Sin extras configurados</p>}
-                                                </div>
+                                     {/* FOOTER ACCIONES - CON BOTON GUARDAR VISIBLE */}
+                                     <div className={`flex gap-3 pt-4 border-t mt-4 items-center ${base.divider}`}>
+                                          {/* CAMBIO FOTO */}
+                                          <div className={`relative group cursor-pointer w-12 h-12 rounded-xl overflow-hidden border-2 border-dashed border-gray-500/30 hover:border-blue-500 transition-colors flex items-center justify-center ${base.uploadBox}`} title="Cambiar Foto">
+                                              <input type="file" accept="image/*" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={(e) => handleImageUpload(e, pizza.id)} />
+                                              <Image size={20} className="opacity-40 group-hover:text-blue-500"/>
+                                          </div>
 
-                                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                                    <input value={editAdiName} onChange={e => setEditAdiName(e.target.value)} placeholder="Nombre visible" className={`p-2 rounded-lg text-xs border outline-none ${base.input}`}/>
-                                                    <input value={editAdiQty} onChange={e => setEditAdiQty(e.target.value)} placeholder="Cant." type="number" className={`p-2 rounded-lg text-xs border outline-none ${base.input}`}/>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <select value={editAdiIng} onChange={e => setEditAdiIng(e.target.value)} className={`flex-1 p-2 rounded-lg text-xs border outline-none ${base.input}`}>
-                                                        <option value="">Ingrediente del stock...</option>
-                                                        {ingredients.map((i: any) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                                                    </select>
-                                                    <button 
-                                                        onClick={() => {
-                                                            addAdicional(pizza.id, editAdiIng, Number(editAdiQty), editAdiName);
-                                                            setEditAdiName(''); setEditAdiQty(''); setEditAdiIng('');
-                                                        }} 
-                                                        disabled={!editAdiName || !editAdiQty || !editAdiIng}
-                                                        className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-500 disabled:opacity-50"
-                                                    ><Plus size={16}/></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* FOOTER ACCIONES */}
-                                    <div className={`flex gap-3 pt-4 border-t mt-4 items-center ${base.divider}`}>
-                                         {/* CAMBIO FOTO */}
-                                         <div className={`relative group cursor-pointer w-12 h-12 rounded-xl overflow-hidden border-2 border-dashed border-gray-500/30 hover:border-blue-500 transition-colors flex items-center justify-center ${base.uploadBox}`} title="Cambiar Foto">
-                                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={(e) => handleImageUpload(e, pizza.id)} />
-                                            <Image size={20} className="opacity-40 group-hover:text-blue-500"/>
-                                        </div>
-
-                                        <button onClick={() => duplicateP(pizza)} className={`p-3 rounded-xl border ${base.buttonSec}`} title="Duplicar"><Copy size={18}/></button>
-                                        <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
-                                        
-                                        <div className="flex-1 flex gap-3 justify-end">
-                                            {hasChanges && (
-                                                <>
-                                                    <button onClick={() => cancelChanges(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
-                                                    <button onClick={() => handleSaveEdit(pizza.id)} className="px-6 py-3 rounded-xl bg-green-600 text-white font-bold shadow-lg flex items-center gap-2 hover:bg-green-500 text-sm"><Save size={18}/> Guardar Cambios</button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+                                          <button onClick={() => duplicateP(pizza)} className={`p-3 rounded-xl border ${base.buttonSec}`} title="Duplicar"><Copy size={18}/></button>
+                                          <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
+                                          
+                                          <div className="flex-1 flex gap-3 justify-end">
+                                              {hasChanges && (
+                                                  <>
+                                                      <button onClick={() => cancelChanges(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
+                                                      <button onClick={() => handleSaveEdit(pizza.id)} className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}>
+                                                          <Save size={18}/> Guardar Cambios
+                                                      </button>
+                                                  </>
+                                              )}
+                                          </div>
+                                     </div>
+                                 </div>
+                             )}
+                         </div>
+                     );
+                 })}
             </div>
         </div>
     );

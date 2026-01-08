@@ -49,16 +49,16 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
 };
 
 const THEMES = [
-  { name: 'Carbone', color: 'bg-neutral-600', gradient: 'from-neutral-700 to-neutral-900', text: 'text-neutral-400' },
-  { name: 'Turquesa', color: 'bg-cyan-600', gradient: 'from-cyan-600 to-teal-900', text: 'text-cyan-400' },
-  { name: 'Pistacho', color: 'bg-lime-600', gradient: 'from-lime-600 to-green-900', text: 'text-lime-400' },
-  { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-600 to-rose-900', text: 'text-red-500' },
-  { name: 'Violeta', color: 'bg-violet-600', gradient: 'from-violet-600 to-purple-900', text: 'text-violet-400' },
-  { name: 'Insta', color: 'bg-pink-600', gradient: 'from-purple-600 via-pink-600 to-orange-500', text: 'text-pink-500' },
-  { name: 'Aurora', color: 'bg-indigo-600', gradient: 'from-blue-500 via-indigo-500 to-purple-500', text: 'text-indigo-400' },
+  { name: 'Carbone', color: 'bg-neutral-900', gradient: 'from-neutral-800 to-black', text: 'text-white' },
+  { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
+  { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
+  { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
+  { name: 'Violeta', color: 'bg-violet-600', gradient: 'from-violet-500 to-purple-800', text: 'text-violet-500' },
+  { name: 'Insta', color: 'bg-pink-600', gradient: 'from-purple-500 via-pink-500 to-orange-400', text: 'text-pink-500' },
+  { name: 'Aurora', color: 'bg-indigo-600', gradient: 'from-blue-500 via-indigo-600 to-purple-600', text: 'text-indigo-500' },
   { name: 'Sunset', color: 'bg-orange-500', gradient: 'from-rose-500 via-orange-500 to-yellow-500', text: 'text-orange-500' },
-  { name: 'Oceanic', color: 'bg-cyan-600', gradient: 'from-cyan-500 via-blue-600 to-indigo-600', text: 'text-cyan-500' },
-  { name: 'Berry', color: 'bg-fuchsia-600', gradient: 'from-fuchsia-600 via-purple-600 to-pink-600', text: 'text-fuchsia-500' },
+  { name: 'Oceanic', color: 'bg-blue-600', gradient: 'from-cyan-500 via-blue-600 to-indigo-600', text: 'text-blue-500' },
+  { name: 'Berry', color: 'bg-fuchsia-600', gradient: 'from-fuchsia-500 via-purple-600 to-pink-600', text: 'text-fuchsia-500' },
 ];
 
 export default function AdminPage() {

@@ -119,10 +119,11 @@ export const KitchenView = ({
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className={`font-black text-xl leading-none ${currentTheme.text}`}>{p.nombre}</h3>
+                                            {/* Titulo neutro usando base.text */}
+                                            <h3 className={`font-black text-xl leading-none ${base.text}`}>{p.nombre}</h3>
                                             {p.cocinando && (
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                                    <span className={`text-xs font-bold ${currentTheme.color} text-white px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1`}>
                                                         <Flame size={10} fill="white"/> {statusConfig.textReady}
                                                     </span>
                                                     <span className="text-xs font-mono font-bold opacity-60">
@@ -204,7 +205,7 @@ export const KitchenView = ({
                                         </div>
                                     </div>
 
-                                    {/* ACCIONES */}
+                                    {/* ACCIONES - Usan color del tema */}
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => {
@@ -212,7 +213,7 @@ export const KitchenView = ({
                                                 setSelectedOrders(prev => ({...prev, [p.id]: []}));
                                             }} 
                                             disabled={p.enEspera === 0}
-                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enEspera > 0 ? (selectedArePending ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white hover:bg-black dark:bg-white dark:text-black') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
+                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enEspera > 0 ? (selectedArePending ? `${currentTheme.color} text-white shadow-lg` : `${currentTheme.color} text-white hover:brightness-110`) : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
                                         >
                                             {statusConfig.icon} {selectedArePending ? `COCINAR (${selection.length})` : `COCINAR (AUTO)`}
                                         </button>
@@ -223,7 +224,7 @@ export const KitchenView = ({
                                                 setSelectedOrders(prev => ({...prev, [p.id]: []}));
                                             }} 
                                             disabled={p.enHorno === 0}
-                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enHorno > 0 ? (selectedAreCooking ? 'bg-green-600 text-white' : 'bg-green-600 text-white hover:bg-green-500') : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
+                                            className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${p.enHorno > 0 ? (selectedAreCooking ? `${currentTheme.color} text-white shadow-lg` : `${currentTheme.color} text-white hover:brightness-110`) : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'}`}
                                         >
                                             <CheckCircle size={14} /> {selectedAreCooking ? `ENTREGAR (${selection.length})` : `ENTREGAR (AUTO)`}
                                         </button>
