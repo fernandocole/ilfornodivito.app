@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, Power, Check } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, Power, Check, Layers } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -10,7 +10,7 @@ export const MenuView = ({
     setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP, duplicateP, 
     tempRecipeIng, setTempRecipeIng, tempRecipeQty, setTempRecipeQty, addToExistingPizza, removeFromExistingPizza, 
     reservedState, calcularStockDinamico, updateLocalRecipe, newPizzaType, setNewPizzaType, typeFilter, 
-    setTypeFilter, sortOrder, setSortOrder, handleLocalEdit, // <--- ESTA FUNCION ES CLAVE
+    setTypeFilter, sortOrder, setSortOrder, handleLocalEdit, setShowBulkModal,
     // PROPS DE ADICIONALES
     adicionales, addAdicional, delAdicional
 }: any) => {
@@ -67,7 +67,7 @@ export const MenuView = ({
         setExpandedPizza(null);
     };
 
-    // Toggle rápido directo a BD
+    // Esta función maneja la activación rápida (directo a BD)
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
         e.stopPropagation();
         updateP(id, 'activa', !currentState);
@@ -88,12 +88,23 @@ export const MenuView = ({
                     <h2 className={`text-xl font-bold flex items-center gap-2 ${base.text}`}>
                         <Edit3 /> Gestión del Menú
                     </h2>
-                    <button 
-                        onClick={() => setShowNewForm(!showNewForm)} 
-                        className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.color} text-white hover:opacity-80`}`}
-                    >
-                        {showNewForm ? <X size={16}/> : <Plus size={16}/>} {showNewForm ? 'Cerrar' : 'Nuevo Item'}
-                    </button>
+                    <div className="flex gap-2">
+                        {/* BOTÓN NUEVO: EDICIÓN MASIVA */}
+                        <button 
+                            onClick={() => setShowBulkModal(true)} 
+                            className={`p-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm border ${base.buttonSec}`}
+                            title="Edición Masiva"
+                        >
+                            <Layers size={16}/>
+                        </button>
+                        
+                        <button 
+                            onClick={() => setShowNewForm(!showNewForm)} 
+                            className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${showNewForm ? 'bg-red-500 text-white' : `${currentTheme.color} text-white hover:opacity-80`}`}
+                        >
+                            {showNewForm ? <X size={16}/> : <Plus size={16}/>} {showNewForm ? 'Cerrar' : 'Nuevo Item'}
+                        </button>
+                    </div>
                 </div>
 
                 {/* CATEGORÍAS */}
