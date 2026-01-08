@@ -48,7 +48,7 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// CORRECCION 1: COLORES BRILLANTES IGUAL A INVITADOS
+// TEMAS BRILLANTES (Corregido)
 const THEMES = [
   { name: 'Carbone', color: 'bg-neutral-900', gradient: 'from-neutral-800 to-black', text: 'text-white' },
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
@@ -173,23 +173,16 @@ export default function AdminPage() {
            const pizza = pizzas.find((p:any) => p.id === pedido.pizza_id);
            const portions = pizza?.porciones_individuales || config.porciones_por_pizza || 8;
            const fraccion = pedido.cantidad_porciones / portions;
-           
            const rec = recetas.filter((r: any) => r.pizza_id === pedido.pizza_id);
-           rec.forEach((item: any) => {
-               reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion);
-           });
-
-           if(pedido.detalles_adicionales && pedido.detalles_adicionales.length > 0) {
+           rec.forEach((item: any) => { reservedStock[item.ingrediente_id] = (reservedStock[item.ingrediente_id] || 0) + (item.cantidad_requerida * fraccion); });
+           if(pedido.detalles_adicionales) {
               pedido.detalles_adicionales.forEach((extraName: string) => {
                   const adiDef = adicionales.find(a => a.pizza_id === pedido.pizza_id && a.nombre_visible === extraName);
-                  if(adiDef) {
-                       reservedStock[adiDef.ingrediente_id] = (reservedStock[adiDef.ingrediente_id] || 0) + adiDef.cantidad_requerida;
-                  }
+                  if(adiDef) { reservedStock[adiDef.ingrediente_id] = (reservedStock[adiDef.ingrediente_id] || 0) + adiDef.cantidad_requerida; }
               });
            }
        });
        setReservedState(reservedStock);
-
        setPizzas(prevPizzas => prevPizzas.map(p => {
            const pRecetas = recetas.filter((r: any) => r.pizza_id === p.id);
            let stockVirtual = 999;
@@ -217,7 +210,7 @@ export default function AdminPage() {
     }
   }, [autenticado]);
 
-  // --- ONLINE USERS TRACKING (ADMIN) ---
+  // ONLINE USERS
   useEffect(() => {
     if (!autenticado) return;
     const presenceChannel = supabase.channel('online-users', { config: { presence: { key: 'admin' }, }, });
@@ -246,9 +239,7 @@ export default function AdminPage() {
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
   const selectTheme = (t:any) => { setCurrentTheme(t); setShowThemeSelector(false); window.dispatchEvent(new Event('storage')); };
-  
   const updateLogName = async (id:string, n:string) => { await supabase.from('access_logs').update({invitado_nombre: n}).eq('id', id); refreshLogsOnly(); };
-  
   const handleImageUpload = async (event: any, pizzaId: string | null = null) => { 
       const file = event.target.files?.[0]; if (!file) return; setUploading(true); 
       try { 
@@ -259,215 +250,24 @@ export default function AdminPage() {
           if(pizzaId) handleLocalEdit(pizzaId, 'imagen_url', data.publicUrl); else setNewPizzaImg(data.publicUrl); 
       } catch (e: any) { alert('Error: ' + e.message); } finally { setUploading(false); } 
   };
-
   const handleLocalEdit = (id: string, field: string, value: any) => { setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } })); };
   const updateLocalRecipe = (pizzaId: string, newRecipeList: any[]) => { handleLocalEdit(pizzaId, 'local_recipe', newRecipeList); };
-
-  const ingresar = async (e?: React.FormEvent) => { 
-    if (e) e.preventDefault(); 
-    let { data } = await supabase.from('configuracion_dia').select('*').single(); 
-    if (!data) { const { data: n } = await supabase.from('configuracion_dia').insert([{ password_admin: 'admin' }]).select().single(); data = n; } 
-    if (data && data.password_admin === password) { setAutenticado(true); setConfig(data); const expiry = Date.now() + sessionDuration; localStorage.setItem('vito-admin-session', JSON.stringify({ expiry })); cargarDatos(); } 
-    else alert('Incorrecto'); 
-  };
-
+  const ingresar = async (e?: React.FormEvent) => { if (e) e.preventDefault(); let { data } = await supabase.from('configuracion_dia').select('*').single(); if (!data) { const { data: n } = await supabase.from('configuracion_dia').insert([{ password_admin: 'admin' }]).select().single(); data = n; } if (data && data.password_admin === password) { setAutenticado(true); setConfig(data); const expiry = Date.now() + sessionDuration; localStorage.setItem('vito-admin-session', JSON.stringify({ expiry })); cargarDatos(); } else alert('Incorrecto'); };
   const logout = () => { if(confirm("¿Cerrar sesión de administrador?")) { localStorage.removeItem('vito-admin-session'); setAutenticado(false); } };
   const refreshLogsOnly = async () => { const { data } = await supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(100); if (data) setLogs(data); };
   const sendAdminNotification = async (title: string, body: string) => { if ('serviceWorker' in navigator && navigator.serviceWorker.ready) { try { const registration = await navigator.serviceWorker.ready; registration.showNotification(title, { body, icon: '/icon.png' } as any); return; } catch (e) {} } if (Notification.permission === 'granted') new Notification(title, { body, icon: '/icon.png' }); };
-
   const actualizarStockGlobal = async () => { const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString(); const [ { data: allRecetas }, { data: allIngs }, { data: allPizzas }, { data: allPendientes }, { data: configDia } ] = await Promise.all([ supabase.from('recetas').select('*'), supabase.from('ingredientes').select('*'), supabase.from('menu_pizzas').select('*'), supabase.from('pedidos').select('*').neq('estado', 'entregado').gte('created_at', iso), supabase.from('configuracion_dia').select('*').single() ]); if(!allRecetas || !allIngs || !allPizzas || !allPendientes || !configDia) return; setRecetas(allRecetas); setIngredientes(allIngs); setPizzas(allPizzas); };
-  
   const cargarDatos = async () => { const now = new Date(); if (now.getHours() < 6) now.setDate(now.getDate() - 1); now.setHours(6, 0, 0, 0); const iso = now.toISOString(); const [piz, ing, rec, ped, inv, conf, val, logsData, adi] = await Promise.all([ supabase.from('menu_pizzas').select('*').order('created_at', { ascending: true }), supabase.from('ingredientes').select('*').order('nombre'), supabase.from('recetas').select('*'), supabase.from('pedidos').select('*').gte('created_at', iso).order('created_at', { ascending: true }), supabase.from('lista_invitados').select('*').order('nombre'), supabase.from('configuracion_dia').select('*').single(), supabase.from('valoraciones').select('*').gte('created_at', iso).order('created_at', { ascending: false }), supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(100), supabase.from('menu_adicionales').select('*') ]); if(piz.data) setPizzas(piz.data); if(ing.data) setIngredientes(ing.data); if(rec.data) setRecetas(rec.data); if(adi.data) setAdicionales(adi.data); if(ped.data) { setPedidos(ped.data); setInvitadosCount(new Set(ped.data.map((p: any) => p.invitado_nombre.toLowerCase())).size); if (prevPedidosCount.current > 0 && ped.data.length > prevPedidosCount.current) { sendAdminNotification("¡Nuevos Pedidos!", `Han entrado ${ped.data.length - prevPedidosCount.current} pedidos nuevos.`); } prevPedidosCount.current = ped.data.length; } if(inv.data) { setInvitadosDB(inv.data); const map: Record<string, string> = {}; inv.data.forEach((u: any) => { if(u.avatar_url) map[u.nombre.toLowerCase().trim()] = u.avatar_url; }); setAvatarMap(map); } if(conf.data) setConfig(conf.data); if(val.data) setValoraciones(val.data); if(logsData.data) setLogs(logsData.data); if(piz.data && ing.data && rec.data && ped.data) recalcularStockLocal(); };
-
-  // --- ACTIONS ---
+  
   const addAdicional = async (pizzaId: string, ingId: string, qty: number, nombre: string) => { if (!pizzaId || !ingId || qty <= 0 || !nombre) return alert("Datos incompletos"); const { error } = await supabase.from('menu_adicionales').insert([{ pizza_id: pizzaId, ingrediente_id: ingId, cantidad_requerida: qty, nombre_visible: nombre }]); if (error) alert("Error creando adicional"); else { alert("Adicional agregado"); cargarDatos(); } };
   const delAdicional = async (id: string) => { if (!confirm("¿Borrar este adicional?")) return; await supabase.from('menu_adicionales').delete().eq('id', id); cargarDatos(); };
   
-  // 1. MOVER AL HORNO: Descuenta Receta Base + Descuenta Extras de DB
-  const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { 
-      const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); 
-      if (pendientes.length === 0) return; 
-      
-      const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
-      let finalTargets = [];
-      let unitsToCook = 0;
-
-      if (idsSeleccionados && idsSeleccionados.length > 0) {
-          finalTargets = pendientes.filter((x:any) => idsSeleccionados.includes(x.id));
-          const totalP = finalTargets.reduce((a:number,b:any) => a+b.cantidad_porciones,0);
-          unitsToCook = Math.ceil(totalP / target);
-      } else {
-          let cupo = target;
-          for(const pd of pendientes) { if(cupo<=0) break; finalTargets.push(pd); cupo -= pd.cantidad_porciones; }
-          unitsToCook = 1;
-      }
-
-      if(finalTargets.length === 0) return;
-      const ids = finalTargets.map((x:any) => x.id);
-
-      setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'cocinando' } : o));
-      const updates = [];
-      updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', ids));
-
-      const totalDeductions: Record<string, number> = {};
-      
-      // Base
-      const rec = recetas.filter(r => r.pizza_id === p.id);
-      rec.forEach(r => { totalDeductions[r.ingrediente_id] = (totalDeductions[r.ingrediente_id] || 0) + (r.cantidad_requerida * unitsToCook); });
-      
-      // Extras
-      finalTargets.forEach((ord: any) => {
-          if(ord.detalles_adicionales) ord.detalles_adicionales.forEach((n:string) => {
-              const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
-              if(adi) totalDeductions[adi.ingrediente_id] = (totalDeductions[adi.ingrediente_id] || 0) + adi.cantidad_requerida;
-          });
-      });
-
-      // Aplicar descuentos
-      for (const ingId in totalDeductions) {
-          const ing = ingredientes.find(i => i.id === ingId);
-          if (ing) {
-              const deduct = totalDeductions[ingId];
-              const newQ = ing.cantidad_disponible - deduct;
-              setIngredientes(prev => prev.map(i => i.id === ingId ? {...i, cantidad_disponible: newQ} : i));
-              updates.push(supabase.from('ingredientes').update({cantidad_disponible: newQ}).eq('id', ingId));
-          }
-      }
-
-      if(!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id));
-      await Promise.all(updates);
-  };
-
-  // 2. REVERTIR ESTADO
-  const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => {
-      let targets = [];
-      const source = accion === 'sacar_horno' ? p.pedidosPendientes.filter((o:any) => o.estado === 'cocinando') : p.pedidosPendientes.filter((o:any) => o.estado === 'pendiente');
-      if (idsSeleccionados.length > 0) targets = source.filter((x:any) => idsSeleccionados.includes(x.id));
-      else targets = source;
-
-      if(targets.length === 0) return;
-      const ids = targets.map((x:any) => x.id);
-
-      if (accion === 'sacar_horno') {
-          if(!confirm("¿Devolver de horno a espera? (Se repondrá stock)")) return;
-          
-          setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'pendiente' } : o));
-          await supabase.from('pedidos').update({ estado: 'pendiente' }).in('id', ids);
-          
-          const remainingInOven = p.pedidosPendientes.filter((x:any) => x.estado === 'cocinando' && !ids.includes(x.id));
-          if(remainingInOven.length === 0) {
-              await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id);
-          }
-
-          // DEVOLVER STOCK BASE
-          const rec = recetas.filter(r => r.pizza_id === p.id);
-          const portions = p.porciones_individuales || config.porciones_por_pizza || 1;
-          const totalPorciones = targets.reduce((a:number, b:any) => a + b.cantidad_porciones, 0);
-          const unitsToReturn = Math.ceil(totalPorciones / portions);
-
-          const updates = [];
-          for (const item of rec) {
-              const ing = ingredientes.find(i => i.id === item.ingrediente_id);
-              if (ing) {
-                  const newQty = ing.cantidad_disponible + (item.cantidad_requerida * unitsToReturn);
-                  setIngredientes(prev => prev.map(i => i.id === ing.id ? { ...i, cantidad_disponible: newQty } : i));
-                  updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ing.id));
-              }
-          }
-          
-          // Devolver Extras
-          const extrasToReturn: Record<string, number> = {};
-          targets.forEach((ord: any) => {
-              if(ord.detalles_adicionales) {
-                   ord.detalles_adicionales.forEach((n:string) => {
-                      const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n);
-                      if(adi) extrasToReturn[adi.ingrediente_id] = (extrasToReturn[adi.ingrediente_id] || 0) + adi.cantidad_requerida;
-                  });
-              }
-          });
-          
-          for (const ingId in extrasToReturn) {
-              const ing = ingredientes.find(i => i.id === ingId);
-              if (ing) {
-                 const toAdd = extrasToReturn[ingId];
-                 const newQty = ing.cantidad_disponible + toAdd;
-                 setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQty } : i));
-                 updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ingId));
-              }
-          }
-          await Promise.all(updates);
-
-      } else {
-          // CANCELAR ESPERA -> SOLO BORRAR
-          if(!confirm("¿Eliminar pedidos en espera?")) return;
-          setPedidos(prev => prev.filter(o => !ids.includes(o.id)));
-          await supabase.from('pedidos').delete().in('id', ids);
-      }
-      setTimeout(() => cargarDatos(), 500);
-  };
-
-  const entregar = async (p: any, idsSeleccionados?: string[]) => { 
-    const enHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); 
-    if (enHorno.length === 0) return; 
-
-    let idsToUpdate: string[] = [];
-
-    if (idsSeleccionados && idsSeleccionados.length > 0) {
-        idsToUpdate = idsSeleccionados;
-    } else {
-        const target = p.porciones_individuales || config.porciones_por_pizza || 4; 
-        let cupo = target;
-        // FIFO: Ordenar por fecha creación ascendente (más viejos primero)
-        const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        for(const pd of ordenados){ 
-            if(cupo <= 0) break; 
-            idsToUpdate.push(pd.id); 
-            cupo -= pd.cantidad_porciones; 
-        } 
-    }
-
-    if(idsToUpdate.length > 0) { 
-        const entregas = enHorno.filter((e:any) => idsToUpdate.includes(e.id));
-        const counts: Record<string, number> = {};
-        entregas.forEach((e:any) => { const name = e.invitado_nombre; counts[name] = (counts[name] || 0) + 1; });
-        const nombres = Object.entries(counts).map(([name, count]) => `${name} (${count})`).join(', ');
-
-        if(!confirm(`¿Entregar pedidos de: ${nombres}?`)) return; 
-        
-        setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'entregado' } : ped)); 
-        
-        await supabase.from('pedidos').update({ estado: 'entregado' }).in('id', idsToUpdate); 
-        
-        const quedanEnHorno = enHorno.filter((x:any) => !idsToUpdate.includes(x.id)).length; 
-        if (quedanEnHorno === 0) { 
-            await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); 
-            setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz));
-        } 
-    } 
-  };
-
-  const eliminarUnidad = async (nombre: string, pizzaId: string) => {
-      const cand = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado !== 'entregado') 
-                   || pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === 'entregado');
-      
-      if(cand) {
-          if(!confirm("¿Eliminar?")) return;
-          if(cand.estado === 'cocinando') {
-             alert("Por favor, devuelve el pedido al estado 'En Espera' desde el panel de Cocina antes de eliminarlo.");
-             return; 
-          }
-          setPedidos(prev => prev.filter(p => p.id !== cand.id));
-          await supabase.from('pedidos').delete().eq('id', cand.id);
-      }
-  };
+  const moverAlHorno = async (p: any, idsSeleccionados?: string[]) => { const pendientes = p.pedidosPendientes.filter((ped: any) => ped.estado === 'pendiente'); if (pendientes.length === 0) return; const target = p.porciones_individuales || config.porciones_por_pizza || 4; let finalTargets = []; let unitsToCook = 0; if (idsSeleccionados && idsSeleccionados.length > 0) { finalTargets = pendientes.filter((x:any) => idsSeleccionados.includes(x.id)); const totalP = finalTargets.reduce((a:number,b:any) => a+b.cantidad_porciones,0); unitsToCook = Math.ceil(totalP / target); } else { let cupo = target; for(const pd of pendientes) { if(cupo<=0) break; finalTargets.push(pd); cupo -= pd.cantidad_porciones; } unitsToCook = 1; } if(finalTargets.length === 0) return; const ids = finalTargets.map((x:any) => x.id); setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'cocinando' } : o)); const updates = []; updates.push(supabase.from('pedidos').update({ estado: 'cocinando' }).in('id', ids)); const totalDeductions: Record<string, number> = {}; const rec = recetas.filter(r => r.pizza_id === p.id); rec.forEach(r => { totalDeductions[r.ingrediente_id] = (totalDeductions[r.ingrediente_id] || 0) + (r.cantidad_requerida * unitsToCook); }); finalTargets.forEach((ord: any) => { if(ord.detalles_adicionales) ord.detalles_adicionales.forEach((n:string) => { const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n); if(adi) totalDeductions[adi.ingrediente_id] = (totalDeductions[adi.ingrediente_id] || 0) + adi.cantidad_requerida; }); }); for (const ingId in totalDeductions) { const ing = ingredientes.find(i => i.id === ingId); if (ing) { const deduct = totalDeductions[ingId]; const newQ = ing.cantidad_disponible - deduct; setIngredientes(prev => prev.map(i => i.id === ingId ? {...i, cantidad_disponible: newQ} : i)); updates.push(supabase.from('ingredientes').update({cantidad_disponible: newQ}).eq('id', ingId)); } } if(!p.cocinando) updates.push(supabase.from('menu_pizzas').update({ cocinando: true, cocinando_inicio: new Date().toISOString() }).eq('id', p.id)); await Promise.all(updates); };
+  const revertirEstado = async (p: any, accion: 'sacar_horno' | 'cancelar_espera', idsSeleccionados: string[] = []) => { let targets = []; const source = accion === 'sacar_horno' ? p.pedidosPendientes.filter((o:any) => o.estado === 'cocinando') : p.pedidosPendientes.filter((o:any) => o.estado === 'pendiente'); if (idsSeleccionados.length > 0) targets = source.filter((x:any) => idsSeleccionados.includes(x.id)); else targets = source; if(targets.length === 0) return; const ids = targets.map((x:any) => x.id); if (accion === 'sacar_horno') { if(!confirm("¿Devolver de horno a espera? (Se repondrá stock)")) return; setPedidos(prev => prev.map(o => ids.includes(o.id) ? { ...o, estado: 'pendiente' } : o)); await supabase.from('pedidos').update({ estado: 'pendiente' }).in('id', ids); const remainingInOven = p.pedidosPendientes.filter((x:any) => x.estado === 'cocinando' && !ids.includes(x.id)); if(remainingInOven.length === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); } const rec = recetas.filter(r => r.pizza_id === p.id); const portions = p.porciones_individuales || config.porciones_por_pizza || 1; const totalPorciones = targets.reduce((a:number, b:any) => a + b.cantidad_porciones, 0); const unitsToReturn = Math.ceil(totalPorciones / portions); const updates = []; for (const item of rec) { const ing = ingredientes.find(i => i.id === item.ingrediente_id); if (ing) { const newQty = ing.cantidad_disponible + (item.cantidad_requerida * unitsToReturn); setIngredientes(prev => prev.map(i => i.id === ing.id ? { ...i, cantidad_disponible: newQty } : i)); updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ing.id)); } } const extrasToReturn: Record<string, number> = {}; targets.forEach((ord: any) => { if(ord.detalles_adicionales) { ord.detalles_adicionales.forEach((n:string) => { const adi = adicionales.find(a => a.pizza_id === p.id && a.nombre_visible === n); if(adi) extrasToReturn[adi.ingrediente_id] = (extrasToReturn[adi.ingrediente_id] || 0) + adi.cantidad_requerida; }); } }); for (const ingId in extrasToReturn) { const ing = ingredientes.find(i => i.id === ingId); if (ing) { const toAdd = extrasToReturn[ingId]; const newQty = ing.cantidad_disponible + toAdd; setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQty } : i)); updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQty }).eq('id', ingId)); } } await Promise.all(updates); } else { if(!confirm("¿Eliminar pedidos en espera?")) return; setPedidos(prev => prev.filter(o => !ids.includes(o.id))); await supabase.from('pedidos').delete().in('id', ids); } setTimeout(() => cargarDatos(), 500); };
+  const entregar = async (p: any, idsSeleccionados?: string[]) => { const enHorno = p.pedidosPendientes.filter((ped: any) => ped.estado === 'cocinando'); if (enHorno.length === 0) return; let idsToUpdate: string[] = []; if (idsSeleccionados && idsSeleccionados.length > 0) { idsToUpdate = idsSeleccionados; } else { const target = p.porciones_individuales || config.porciones_por_pizza || 4; let cupo = target; const ordenados = [...enHorno].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); for(const pd of ordenados){ if(cupo <= 0) break; idsToUpdate.push(pd.id); cupo -= pd.cantidad_porciones; } } if(idsToUpdate.length > 0) { const entregas = enHorno.filter((e:any) => idsToUpdate.includes(e.id)); const counts: Record<string, number> = {}; entregas.forEach((e:any) => { const name = e.invitado_nombre; counts[name] = (counts[name] || 0) + 1; }); const nombres = Object.entries(counts).map(([name, count]) => `${name} (${count})`).join(', '); if(!confirm(`¿Entregar pedidos de: ${nombres}?`)) return; setPedidos(prev => prev.map(ped => idsToUpdate.includes(ped.id) ? { ...ped, estado: 'entregado' } : ped)); await supabase.from('pedidos').update({ estado: 'entregado' }).in('id', idsToUpdate); const quedanEnHorno = enHorno.filter((x:any) => !idsToUpdate.includes(x.id)).length; if (quedanEnHorno === 0) { await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', p.id); setPizzas(prev => prev.map(pz => pz.id === p.id ? { ...pz, cocinando: false } : pz)); } } };
+  const eliminarUnidad = async (nombre: string, pizzaId: string) => { const cand = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado !== 'entregado') || pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === 'entregado'); if(cand) { if(!confirm("¿Eliminar?")) return; if(cand.estado === 'cocinando') { alert("Por favor, devuelve el pedido al estado 'En Espera' desde el panel de Cocina antes de eliminarlo."); return; } setPedidos(prev => prev.filter(p => p.id !== cand.id)); await supabase.from('pedidos').delete().eq('id', cand.id); } };
   
-  // FUNCION NUEVA PARA ACTUALIZAR TOTAL INVITADOS
-  const updateTotalGuests = async (n: number) => {
-     const val = Math.max(0, n);
-     setConfig({ ...config, total_invitados: val });
-     await supabase.from('configuracion_dia').update({ total_invitados: val }).eq('id', config.id);
-  };
-
+  const updateTotalGuests = async (n: number) => { const val = Math.max(0, n); setConfig({ ...config, total_invitados: val }); await supabase.from('configuracion_dia').update({ total_invitados: val }).eq('id', config.id); };
   const eliminarUnidadPorEstado = async (nombre: string, pizzaId: string, estado: string) => { const candidate = pedidos.find(p => p.invitado_nombre === nombre && p.pizza_id === pizzaId && p.estado === estado); if (candidate) { if (!confirm(`¿Eliminar?`)) return; if (estado === 'cocinando') { alert("Devuelve stock primero."); return; } await supabase.from('pedidos').delete().eq('id', candidate.id); setPedidos(prev => prev.filter(p => p.id !== candidate.id)); cargarDatos(); } };
   const cleanOrdersByState = async (status: string) => { if(confirm("¿Borrar?")) await supabase.from('pedidos').delete().eq('estado', status); cargarDatos(); };
   const openCleanModal = () => setShowCleanModal(true);
@@ -479,25 +279,9 @@ export default function AdminPage() {
   const forceStopCooking = async (pizzaId: string) => { if(!confirm("¿Forzar detención?")) return; await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); await cargarDatos(); };
   const addToNewPizzaRecipe = () => { if(newPizzaSelectedIng) { const [id,n]=newPizzaSelectedIng.split('|'); setNewPizzaIngredients(p=>[...p,{ingrediente_id:id,nombre:n,cantidad:Number(newPizzaRecipeQty)}]); } };
   const removeFromNewPizzaRecipe = (i:number) => setNewPizzaIngredients(p=>p.filter((_,idx)=>idx!==i));
-  const addP = async (ex?:any[]) => { 
-      if(!newPizzaName)return; 
-      const {data} = await supabase.from('menu_pizzas').insert([{nombre:newPizzaName, descripcion:newPizzaDesc, stock:0, imagen_url:newPizzaImg, tiempo_coccion:newPizzaTime, categoria:newPizzaCat, activa:true, porciones_individuales:newPizzaPortions, tipo:newPizzaType}]).select().single();
-      if(data) {
-          if(newPizzaIngredients.length) await supabase.from('recetas').insert(newPizzaIngredients.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad})));
-          if(ex?.length) await supabase.from('menu_adicionales').insert(ex.map(x=>({pizza_id:data.id, ingrediente_id:x.ingrediente_id, cantidad_requerida:x.cantidad, nombre_visible:x.nombre_visible})));
-      }
-      setNewPizzaName(''); setNewPizzaIngredients([]); cargarDatos();
-  };
+  const addP = async (ex?:any[]) => { if(!newPizzaName)return; const {data} = await supabase.from('menu_pizzas').insert([{nombre:newPizzaName, descripcion:newPizzaDesc, stock:0, imagen_url:newPizzaImg, tiempo_coccion:newPizzaTime, categoria:newPizzaCat, activa:true, porciones_individuales:newPizzaPortions, tipo:newPizzaType}]).select().single(); if(data) { if(newPizzaIngredients.length) await supabase.from('recetas').insert(newPizzaIngredients.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad}))); if(ex?.length) await supabase.from('menu_adicionales').insert(ex.map(x=>({pizza_id:data.id, ingrediente_id:x.ingrediente_id, cantidad_requerida:x.cantidad, nombre_visible:x.nombre_visible}))); } setNewPizzaName(''); setNewPizzaIngredients([]); cargarDatos(); };
   const updateP = (id:string, f:string, v:any) => { supabase.from('menu_pizzas').update({[f]:v}).eq('id',id); setPizzas(p=>p.map(x=>x.id===id?{...x,[f]:v}:x)); };
-  const duplicateP = async(p:any) => { 
-      if(!confirm("Duplicar?")) return;
-      const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single();
-      if(data) {
-          const rec = recetas.filter(r=>r.pizza_id === p.id);
-          if(rec.length) await supabase.from('recetas').insert(rec.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida})));
-      }
-      cargarDatos();
-  };
+  const duplicateP = async(p:any) => { if(!confirm("Duplicar?")) return; const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single(); if(data) { const rec = recetas.filter(r=>r.pizza_id === p.id); if(rec.length) await supabase.from('recetas').insert(rec.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); } cargarDatos(); };
   const delP = async(id:string) => { if(confirm("Borrar?")) { await supabase.from('menu_pizzas').delete().eq('id', id); cargarDatos(); } };
   const changePass = async() => { await supabase.from('configuracion_dia').update({password_admin:newPass}).eq('id',config.id); };
   const toggleCategory = async(c:string) => { const s = new Set(activeCategories); if(s.has(c))s.delete(c); else s.add(c); setConfig({...config, categoria_activa: JSON.stringify(Array.from(s))}); supabase.from('configuracion_dia').update({categoria_activa: JSON.stringify(Array.from(s))}).eq('id',config.id); };
@@ -506,12 +290,7 @@ export default function AdminPage() {
   const guardarMotivo = async(n:string, u:any) => { await supabase.from('lista_invitados').update({motivo_bloqueo:tempMotivos[n]}).eq('id',u.id); };
   const resetU = async(n:string) => { if(confirm("Borrar?")) await supabase.from('pedidos').delete().eq('invitado_nombre',n); cargarDatos(); };
   const eliminarUsuario = async(n:string, u:any) => { if(confirm("Eliminar?")) { await supabase.from('pedidos').delete().eq('invitado_nombre',n); await supabase.from('lista_invitados').delete().eq('id',u.id); cargarDatos(); } };
-  const savePizzaChanges = async(id:string) => { 
-      const e = edits[id]; if(!e)return; 
-      if(e.local_recipe) { await supabase.from('recetas').delete().eq('pizza_id',id); await supabase.from('recetas').insert(e.local_recipe.map((r:any)=>({pizza_id:id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); }
-      const {local_recipe, ...rest} = e; await supabase.from('menu_pizzas').update(rest).eq('id',id);
-      setEdits(prev=>{const n={...prev}; delete n[id]; return n;}); cargarDatos();
-  };
+  const savePizzaChanges = async(id:string) => { const e = edits[id]; if(!e)return; if(e.local_recipe) { await supabase.from('recetas').delete().eq('pizza_id',id); await supabase.from('recetas').insert(e.local_recipe.map((r:any)=>({pizza_id:id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); } const {local_recipe, ...rest} = e; await supabase.from('menu_pizzas').update(rest).eq('id',id); setEdits(prev=>{const n={...prev}; delete n[id]; return n;}); cargarDatos(); };
   const cancelChanges = (id:string) => setEdits(prev=>{const n={...prev}; delete n[id]; return n;});
   const addToExistingPizza = (pid:string, iid:string, n:string, q:any, cur:any) => updateLocalRecipe(pid, [...cur, {ingrediente_id: iid, nombre: n, cantidad_requerida: q}]);
   const removeFromExistingPizza = (pid:string, idx:number, cur:any) => updateLocalRecipe(pid, cur.filter((_:any,i:number)=>i!==idx));
@@ -519,7 +298,7 @@ export default function AdminPage() {
   const delIng = async(id:string) => { await supabase.from('ingredientes').delete().eq('id',id); cargarDatos(); };
   const saveEditIng = async(id:string) => { await supabase.from('ingredientes').update({nombre:editIngForm.nombre, cantidad_disponible:editIngForm.cantidad}).eq('id',id); setEditingIngId(null); cargarDatos(); };
   
-  // CORRECCIÓN 5: START EDIT INGREDIENT FIX
+  // FIX: Start Edit Inventory
   const startEditIng = (i:any) => { 
       setEditingIngId(i.id); 
       setEditIngForm({ nombre: i.nombre, cantidad: i.cantidad_disponible, unidad: i.unidad, categoria: i.categoria || 'General' }); 
@@ -531,7 +310,6 @@ export default function AdminPage() {
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
 
 
-  // CORRECCIÓN 4: LOGIN COMPLETO
   if (!autenticado) {
       return (
           <div className={`min-h-screen flex items-center justify-center p-4 pb-40 ${base.bg}`}>
@@ -554,10 +332,10 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-       {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO */}
-       <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 z-0 rounded-b-[3rem] pointer-events-none`}></div>
+        {/* FONDO GRADIENTE (Z-0) */}
+        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
-       {/* HEADER (Z-INDEX 50) */}
+       {/* HEADER (Z-50) */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
               <img src="/logo.png" className="h-10 w-auto" />
@@ -569,7 +347,6 @@ export default function AdminPage() {
               </div>
           </div>
           
-          {/* CORRECCIÓN 2 y 3: HEADER EN DOS LINEAS Y BOTONES PEQUEÑOS */}
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
               <div className="flex gap-2">
                   <div className="relative">
@@ -602,7 +379,7 @@ export default function AdminPage() {
           </div>
        </div>
 
-       {/* CONTENIDO (Z-INDEX 10 RELATIVO) */}
+       {/* CONTENIDO (Z-10 RELATIVE) */}
        <div className="pt-32 px-4 pb-36 max-w-4xl mx-auto relative z-10">
            {view === 'cocina' && (
                 <>
@@ -628,7 +405,7 @@ export default function AdminPage() {
                 </>
            )}
            {view === 'pedidos' && <OrdersView pedidosAgrupados={pedidosAgrupados} base={base} isDarkMode={isDarkMode} eliminarPedidosGusto={eliminarPedidosGusto} resetAllOrders={resetAllOrders} eliminarUnidad={eliminarUnidad} eliminarUnidadPorEstado={eliminarUnidadPorEstado} cleanOrdersByState={cleanOrdersByState} openCleanModal={openCleanModal} avatarMap={avatarMap} setImageToView={setImageToView} usersList={allUsersList} />}
-           {view === 'menu' && <MenuView base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} typeFilter={menuTypeFilter} setTypeFilter={setMenuTypeFilter} sortOrder={menuSortOrder} setSortOrder={setMenuSortOrder} adicionales={adicionales} addAdicional={addAdicional} delAdicional={delAdicional} />}
+           {view === 'menu' && <MenuView base={base} config={config} setConfig={setConfig} activeCategories={activeCategories} uniqueCategories={uniqueCategories} toggleCategory={toggleCategory} currentTheme={currentTheme} addP={addP} uploading={uploading} newPizzaName={newPizzaName} setNewPizzaName={setNewPizzaName} isDarkMode={isDarkMode} handleImageUpload={handleImageUpload} newPizzaImg={newPizzaImg} newPizzaDesc={newPizzaDesc} setNewPizzaDesc={setNewPizzaDesc} newPizzaIngredients={newPizzaIngredients} removeFromNewPizzaRecipe={removeFromNewPizzaRecipe} newPizzaSelectedIng={newPizzaSelectedIng} setNewPizzaSelectedIng={setNewPizzaSelectedIng} ingredients={ingredientes} newPizzaRecipeQty={newPizzaRecipeQty} setNewPizzaRecipeQty={setNewPizzaRecipeQty} addToNewPizzaRecipe={addToNewPizzaRecipe} newPizzaCat={newPizzaCat} setNewPizzaCat={setNewPizzaCat} newPizzaPortions={newPizzaPortions} setNewPizzaPortions={setNewPizzaPortions} stockEstimadoNueva={stockEstimadoNueva} newPizzaTime={newPizzaTime} setNewPizzaTime={setNewPizzaTime} pizzas={pizzas} edits={edits} recetas={recetas} updateP={updateP} savePizzaChanges={savePizzaChanges} cancelChanges={cancelChanges} delP={delP} duplicateP={duplicateP} tempRecipeIng={tempRecipeIng} setTempRecipeIng={setTempRecipeIng} tempRecipeQty={tempRecipeQty} setTempRecipeQty={setTempRecipeQty} addToExistingPizza={addToExistingPizza} removeFromExistingPizza={removeFromExistingPizza} reservedState={reservedState} calcularStockDinamico={calcularStockDinamico} updateLocalRecipe={updateLocalRecipe} newPizzaType={newPizzaType} typeFilter={menuTypeFilter} setTypeFilter={setMenuTypeFilter} sortOrder={menuSortOrder} setSortOrder={setMenuSortOrder} adicionales={adicionales} addAdicional={addAdicional} delAdicional={delAdicional} handleLocalEdit={handleLocalEdit} />}
            {view === 'ingredientes' && <InventoryView base={base} currentTheme={currentTheme} ingredients={ingredientes} newIngName={newIngName} setNewIngName={setNewIngName} newIngQty={newIngQty} setNewIngQty={setNewIngQty} newIngUnit={newIngUnit} setNewIngUnit={setNewIngUnit} newIngCat={newIngCat} setNewIngCat={setNewIngCat} addIng={addIng} editingIngId={editingIngId} editIngForm={editIngForm} setEditIngForm={setEditIngForm} saveEditIng={saveEditIng} saveBulkIngredient={saveBulkIngredient} cancelEditIng={cancelEditIng} delIng={delIng} startEditIng={startEditIng} reservedState={reservedState} quickUpdateStock={quickUpdateStock} inventoryFilterCategory={inventoryFilterCategory} setInventoryFilterCategory={setInventoryFilterCategory} />}
            {view === 'usuarios' && <UsersView base={base} newGuestName={newGuestName} setNewGuestName={setNewGuestName} addU={addU} allUsersList={allUsersList} resetU={resetU} toggleB={toggleB} eliminarUsuario={eliminarUsuario} tempMotivos={tempMotivos} setTempMotivos={setTempMotivos} guardarMotivo={guardarMotivo} currentTheme={currentTheme} resetAllOrders={resetAllOrders} avatarMap={avatarMap} setImageToView={setImageToView} />}
            {view === 'config' && <ConfigView base={base} config={config} setConfig={setConfig} isDarkMode={isDarkMode} resetAllOrders={resetAllOrders} newPass={newPass} setNewPass={setNewPass} confirmPass={confirmPass} setConfirmPass={setConfirmPass} changePass={changePass} currentTheme={currentTheme} sessionDuration={sessionDuration} setSessionDuration={setSessionDuration} updateTotalGuests={updateTotalGuests} />}
@@ -648,7 +425,7 @@ export default function AdminPage() {
           <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
        </div>
 
-       {/* CORRECCIÓN 6: MODAL ONLINE USERS SIN EDITAR */}
+       {/* MODAL ONLINE USERS (Sin input de invitados) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
