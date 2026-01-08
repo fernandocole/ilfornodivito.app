@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, PlusCircle, Clock, ChevronDown, ChevronUp, Power, Check } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, ChevronDown, Power, Check } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -10,7 +10,7 @@ export const MenuView = ({
     setNewPizzaTime, pizzas, edits, recetas, updateP, savePizzaChanges, cancelChanges, delP, duplicateP, 
     tempRecipeIng, setTempRecipeIng, tempRecipeQty, setTempRecipeQty, addToExistingPizza, removeFromExistingPizza, 
     reservedState, calcularStockDinamico, updateLocalRecipe, newPizzaType, setNewPizzaType, typeFilter, 
-    setTypeFilter, sortOrder, setSortOrder, handleLocalEdit, // <--- IMPORTANTE: Agregado handleLocalEdit
+    setTypeFilter, sortOrder, setSortOrder, handleLocalEdit,
     // PROPS DE ADICIONALES
     adicionales, addAdicional, delAdicional
 }: any) => {
@@ -54,15 +54,20 @@ export const MenuView = ({
         await addP(newPizzaExtras);
         setNewPizzaExtras([]);
         setTimeMin(0); setTimeSec(0);
-        setShowNewForm(false); // CONTRAER AL GUARDAR
+        setShowNewForm(false);
     };
 
     const handleSaveEdit = async (id: string) => {
         await savePizzaChanges(id);
-        setExpandedPizza(null); // CONTRAER AL GUARDAR
+        setExpandedPizza(null); // Colapsar al guardar
     };
 
-    // Esta función maneja la activación rápida desde el botón de Power (Directo a DB)
+    const handleCancelEdit = (id: string) => {
+        cancelChanges(id);
+        setExpandedPizza(null); // Colapsar al cancelar
+    };
+
+    // Esta función maneja la activación rápida (directo a DB)
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
         e.stopPropagation();
         updateP(id, 'activa', !currentState);
@@ -114,7 +119,6 @@ export const MenuView = ({
                 {showNewForm && (
                     <div className={`animate-in fade-in slide-in-from-top-4 p-5 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`}>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            
                             {/* COLUMNA IZQUIERDA: DATOS */}
                             <div className="space-y-4">
                                 <h4 className="text-xs font-bold uppercase opacity-50 tracking-wider">Datos Principales</h4>
@@ -156,7 +160,6 @@ export const MenuView = ({
                                     </div>
                                 </div>
                             </div>
-
                             {/* COLUMNA DERECHA: RECETA Y EXTRAS */}
                             <div className="space-y-4">
                                 {/* 1. RECETA BASE */}
@@ -182,7 +185,6 @@ export const MenuView = ({
                                         ))}
                                     </div>
                                 </div>
-
                                 {/* 2. ADICIONALES (NUEVO) */}
                                 <div className={`p-4 rounded-2xl border ${base.card}`}>
                                     <h4 className="text-xs font-bold uppercase opacity-50 mb-2 text-purple-500">Adicionales / Extras</h4>
@@ -263,7 +265,6 @@ export const MenuView = ({
                                  <div className="flex-1 min-w-0 flex flex-col justify-between">
                                      <div className="flex justify-between items-start">
                                          <div>
-                                            {/* CORRECCIÓN: Título neutro (base.text) */}
                                             <h3 className={`font-bold text-lg leading-tight truncate ${base.text}`}>{pizza.nombre}</h3>
                                             <p className={`text-xs mt-1 line-clamp-1 opacity-60`}>{pizza.descripcion || 'Sin descripción'}</p>
                                          </div>
@@ -296,6 +297,7 @@ export const MenuView = ({
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold uppercase opacity-40">Nombre</label>
+                                                    {/* CORRECCIÓN: Usar handleLocalEdit para activar hasChanges */}
                                                     <input value={isEditing?.nombre ?? pizza.nombre} onChange={e => handleLocalEdit(pizza.id, 'nombre', e.target.value)} className={`w-full p-2.5 rounded-xl text-sm border outline-none ${base.input}`} />
                                                 </div>
                                                 <div className="space-y-1">
@@ -436,7 +438,7 @@ export const MenuView = ({
                                             </div>
                                      </div>
 
-                                     {/* FOOTER ACCIONES - CON BOTON GUARDAR VISIBLE */}
+                                     {/* FOOTER ACCIONES */}
                                      <div className={`flex gap-3 pt-4 border-t mt-4 items-center ${base.divider}`}>
                                           <div className={`relative group cursor-pointer w-12 h-12 rounded-xl overflow-hidden border-2 border-dashed border-gray-500/30 hover:border-blue-500 transition-colors flex items-center justify-center ${base.uploadBox}`} title="Cambiar Foto">
                                               <input type="file" accept="image/*" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={(e) => handleImageUpload(e, pizza.id)} />
@@ -447,10 +449,10 @@ export const MenuView = ({
                                           <button onClick={() => delP(pizza.id)} className="p-3 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10" title="Eliminar"><Trash2 size={18}/></button>
                                           
                                           <div className="flex-1 flex gap-3 justify-end">
-                                              {/* BOTÓN GUARDAR VISIBLE CUANDO HAY CAMBIOS */}
+                                              {/* BOTONES VISIBLES SOLO SI HAY CAMBIOS */}
                                               {hasChanges && (
                                                   <>
-                                                      <button onClick={() => { cancelChanges(pizza.id); setExpandedPizza(null); }} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
+                                                      <button onClick={() => handleCancelEdit(pizza.id)} className={`px-4 py-3 rounded-xl border font-bold text-xs ${base.buttonSec}`}>Cancelar</button>
                                                       <button onClick={() => handleSaveEdit(pizza.id)} className={`px-6 py-3 rounded-xl ${currentTheme.color} text-white font-bold shadow-lg flex items-center gap-2 hover:opacity-90 text-sm`}>
                                                           <Save size={18}/> Guardar Cambios
                                                       </button>
