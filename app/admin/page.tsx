@@ -472,25 +472,9 @@ export default function AdminPage() {
   const forceStopCooking = async (pizzaId: string) => { if(!confirm("¿Forzar detención?")) return; await supabase.from('menu_pizzas').update({ cocinando: false, cocinando_inicio: null }).eq('id', pizzaId); await cargarDatos(); };
   const addToNewPizzaRecipe = () => { if(newPizzaSelectedIng) { const [id,n]=newPizzaSelectedIng.split('|'); setNewPizzaIngredients(p=>[...p,{ingrediente_id:id,nombre:n,cantidad:Number(newPizzaRecipeQty)}]); } };
   const removeFromNewPizzaRecipe = (i:number) => setNewPizzaIngredients(p=>p.filter((_,idx)=>idx!==i));
-  const addP = async (ex?:any[]) => { 
-      if(!newPizzaName)return; 
-      const {data} = await supabase.from('menu_pizzas').insert([{nombre:newPizzaName, descripcion:newPizzaDesc, stock:0, imagen_url:newPizzaImg, tiempo_coccion:newPizzaTime, categoria:newPizzaCat, activa:true, porciones_individuales:newPizzaPortions, tipo:newPizzaType}]).select().single();
-      if(data) {
-          if(newPizzaIngredients.length) await supabase.from('recetas').insert(newPizzaIngredients.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad})));
-          if(ex?.length) await supabase.from('menu_adicionales').insert(ex.map(x=>({pizza_id:data.id, ingrediente_id:x.ingrediente_id, cantidad_requerida:x.cantidad, nombre_visible:x.nombre_visible})));
-      }
-      setNewPizzaName(''); setNewPizzaIngredients([]); cargarDatos();
-  };
+  const addP = async (ex?:any[]) => { if(!newPizzaName)return; const {data} = await supabase.from('menu_pizzas').insert([{nombre:newPizzaName, descripcion:newPizzaDesc, stock:0, imagen_url:newPizzaImg, tiempo_coccion:newPizzaTime, categoria:newPizzaCat, activa:true, porciones_individuales:newPizzaPortions, tipo:newPizzaType}]).select().single(); if(data) { if(newPizzaIngredients.length) await supabase.from('recetas').insert(newPizzaIngredients.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad}))); if(ex?.length) await supabase.from('menu_adicionales').insert(ex.map(x=>({pizza_id:data.id, ingrediente_id:x.ingrediente_id, cantidad_requerida:x.cantidad, nombre_visible:x.nombre_visible}))); } setNewPizzaName(''); setNewPizzaIngredients([]); cargarDatos(); };
   const updateP = (id:string, f:string, v:any) => { supabase.from('menu_pizzas').update({[f]:v}).eq('id',id); setPizzas(p=>p.map(x=>x.id===id?{...x,[f]:v}:x)); };
-  const duplicateP = async(p:any) => { 
-      if(!confirm("Duplicar?")) return;
-      const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single();
-      if(data) {
-          const rec = recetas.filter(r=>r.pizza_id === p.id);
-          if(rec.length) await supabase.from('recetas').insert(rec.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida})));
-      }
-      cargarDatos();
-  };
+  const duplicateP = async(p:any) => { if(!confirm("Duplicar?")) return; const {data} = await supabase.from('menu_pizzas').insert([{...p, id: undefined, nombre: p.nombre + ' (Copia)', created_at: undefined}]).select().single(); if(data) { const rec = recetas.filter(r=>r.pizza_id === p.id); if(rec.length) await supabase.from('recetas').insert(rec.map(r=>({pizza_id:data.id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); } cargarDatos(); };
   const delP = async(id:string) => { if(confirm("Borrar?")) { await supabase.from('menu_pizzas').delete().eq('id', id); cargarDatos(); } };
   const changePass = async() => { await supabase.from('configuracion_dia').update({password_admin:newPass}).eq('id',config.id); };
   const toggleCategory = async(c:string) => { const s = new Set(activeCategories); if(s.has(c))s.delete(c); else s.add(c); setConfig({...config, categoria_activa: JSON.stringify(Array.from(s))}); supabase.from('configuracion_dia').update({categoria_activa: JSON.stringify(Array.from(s))}).eq('id',config.id); };
@@ -499,52 +483,35 @@ export default function AdminPage() {
   const guardarMotivo = async(n:string, u:any) => { await supabase.from('lista_invitados').update({motivo_bloqueo:tempMotivos[n]}).eq('id',u.id); };
   const resetU = async(n:string) => { if(confirm("Borrar?")) await supabase.from('pedidos').delete().eq('invitado_nombre',n); cargarDatos(); };
   const eliminarUsuario = async(n:string, u:any) => { if(confirm("Eliminar?")) { await supabase.from('pedidos').delete().eq('invitado_nombre',n); await supabase.from('lista_invitados').delete().eq('id',u.id); cargarDatos(); } };
-  const savePizzaChanges = async(id:string) => { 
-      const e = edits[id]; if(!e)return; 
-      if(e.local_recipe) { await supabase.from('recetas').delete().eq('pizza_id',id); await supabase.from('recetas').insert(e.local_recipe.map((r:any)=>({pizza_id:id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); }
-      const {local_recipe, ...rest} = e; await supabase.from('menu_pizzas').update(rest).eq('id',id);
-      setEdits(prev=>{const n={...prev}; delete n[id]; return n;}); cargarDatos();
-  };
+  const savePizzaChanges = async(id:string) => { const e = edits[id]; if(!e)return; if(e.local_recipe) { await supabase.from('recetas').delete().eq('pizza_id',id); await supabase.from('recetas').insert(e.local_recipe.map((r:any)=>({pizza_id:id, ingrediente_id:r.ingrediente_id, cantidad_requerida:r.cantidad_requerida}))); } const {local_recipe, ...rest} = e; await supabase.from('menu_pizzas').update(rest).eq('id',id); setEdits(prev=>{const n={...prev}; delete n[id]; return n;}); cargarDatos(); };
   const cancelChanges = (id:string) => setEdits(prev=>{const n={...prev}; delete n[id]; return n;});
   const addToExistingPizza = (pid:string, iid:string, n:string, q:any, cur:any) => updateLocalRecipe(pid, [...cur, {ingrediente_id: iid, nombre: n, cantidad_requerida: q}]);
   const removeFromExistingPizza = (pid:string, idx:number, cur:any) => updateLocalRecipe(pid, cur.filter((_:any,i:number)=>i!==idx));
   const addIng = async() => { await supabase.from('ingredientes').insert([{nombre:newIngName, cantidad_disponible:newIngQty, unidad:newIngUnit, categoria:newIngCat}]); cargarDatos(); };
   const delIng = async(id:string) => { await supabase.from('ingredientes').delete().eq('id',id); cargarDatos(); };
   const saveEditIng = async(id:string) => { await supabase.from('ingredientes').update({nombre:editIngForm.nombre, cantidad_disponible:editIngForm.cantidad}).eq('id',id); setEditingIngId(null); cargarDatos(); };
-  const startEditIng = (i:any) => { setEditingIngId(i.id); setEditIngForm(i); };
+  
+  // CORRECCION DE START EDIT ING
+  const startEditIng = (i:any) => { 
+      setEditingIngId(i.id); 
+      // Mapea 'cantidad_disponible' a 'cantidad' para que el input no salga vacío
+      setEditIngForm({ nombre: i.nombre, cantidad: i.cantidad_disponible, unidad: i.unidad, categoria: i.categoria || 'General' }); 
+  };
+
   const cancelEditIng = () => setEditingIngId(null);
   const quickUpdateStock = async(id:string, c:number, a:number) => { await supabase.from('ingredientes').update({cantidad_disponible:c+a}).eq('id',id); cargarDatos(); };
   const saveBulkIngredient = async () => { if (!bulkIngId || bulkSelectedPizzas.length === 0) { alert("Selecciona ingrediente y al menos una pizza."); return; } if (bulkMode === 'SET' && Number(bulkQty) <= 0) { alert("Ingresa una cantidad válida."); return; } const actionText = bulkMode === 'REMOVE' ? 'ELIMINAR ingrediente de' : 'Aplicar cambios a'; const confirmText = `¿${actionText} ${bulkSelectedPizzas.length} items?`; if (!confirm(confirmText)) return; try { if (bulkMode === 'REMOVE') { for (const pid of bulkSelectedPizzas) { await supabase.from('recetas').delete().eq('pizza_id', pid).eq('ingrediente_id', bulkIngId); } alert("¡Ingrediente eliminado de la selección!"); } else { for (const pid of bulkSelectedPizzas) { const { data: existingRecipe } = await supabase.from('recetas').select('*').eq('pizza_id', pid).eq('ingrediente_id', bulkIngId).single(); if (existingRecipe) await supabase.from('recetas').update({ cantidad_requerida: Number(bulkQty) }).eq('id', existingRecipe.id); else await supabase.from('recetas').insert([{ pizza_id: pid, ingrediente_id: bulkIngId, cantidad_requerida: Number(bulkQty) }]); } alert("¡Aplicado correctamente!"); } setShowBulkModal(false); setBulkSelectedPizzas([]); setBulkQty(''); setBulkIngId(''); await cargarDatos(); await actualizarStockGlobal(); } catch (error: any) { alert("Error aplicando cambios masivos: " + error.message); } };
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
 
 
-  // RENDERIZADO LOGIN RESTAURADO CON LOGO Y INPUT
-  if (!autenticado) {
-      return (
-          <div className={`min-h-screen flex items-center justify-center p-4 pb-40 ${base.bg}`}>
-            <div className={`w-full max-w-md p-8 rounded-3xl border shadow-xl ${base.card}`}>
-              <div className="flex justify-center mb-6"><img src="/logo.png" alt="Logo" className="h-48 w-auto object-contain drop-shadow-xl" /></div>
-              <form onSubmit={ingresar} className="flex flex-col gap-4">
-                  <div className="relative">
-                      <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full p-4 rounded-xl border outline-none ${base.input}`} placeholder="Contraseña..." autoFocus />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff size={24} /> : <Eye size={24} />}</button>
-                  </div>
-                  <button type="submit" className={`w-full ${currentTheme.color} text-white font-bold py-4 rounded-xl hover:opacity-90 transition`}>ENTRAR</button>
-              </form>
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                  <button onClick={() => window.location.href='/'} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-2 font-bold ${base.buttonSec}`}><Users size={20} /> MODO INVITADOS</button>
-              </div>
-            </div>
-          </div>
-      );
-  }
+  if (!autenticado) return (<div className={`min-h-screen flex items-center justify-center p-4 ${base.bg}`}><div className={`w-full max-w-md p-8 rounded-3xl border shadow-xl ${base.card}`}><div className="flex justify-center mb-6"><img src="/logo.png" alt="Logo" className="h-48 w-auto object-contain drop-shadow-xl" /></div><form onSubmit={ingresar} className="flex flex-col gap-4"><div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full p-4 rounded-xl border outline-none ${base.input}`} placeholder="Contraseña..." autoFocus /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff size={24} /> : <Eye size={24} />}</button></div><button type="submit" className={`w-full ${currentTheme.color} text-white font-bold py-4 rounded-xl hover:opacity-90 transition`}>ENTRAR</button></form><div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10"><button onClick={() => window.location.href='/'} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-2 font-bold ${base.buttonSec}`}><Users size={20} /> MODO INVITADOS</button></div></div></div>);
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-        {/* FONDO GRADIENTE ESTILO INVITADOS */}
-        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 -z-10 rounded-b-[3rem]`}></div>
+        {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO: SE AGREGÓ Z-0 EXPLICITO */}
+        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
-       {/* HEADER EN DOS LINEAS */}
+       {/* HEADER (Z-INDEX 50) */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
               <img src="/logo.png" className="h-10 w-auto" />
@@ -590,10 +557,10 @@ export default function AdminPage() {
           </div>
        </div>
 
-       <div className="pt-32 px-4 pb-36 max-w-4xl mx-auto">
+       {/* CONTENIDO (Z-INDEX 10 RELATIVO) */}
+       <div className="pt-32 px-4 pb-36 max-w-4xl mx-auto relative z-10">
            {view === 'cocina' && (
                 <>
-                {/* BARRA DE ESTADO */}
                 <div className="grid grid-cols-4 gap-2 mb-4">
                     <div className={`p-2 rounded-xl border flex flex-col items-center justify-center ${base.metric}`}>
                          <div className="flex items-center gap-1 opacity-60"><Users size={12}/><span className="text-[8px] font-bold uppercase">Espera</span></div>
@@ -624,7 +591,7 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* BARRA INFERIOR RESTAURADA */}
+       {/* BARRA INFERIOR */}
        <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
           <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
           <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>
