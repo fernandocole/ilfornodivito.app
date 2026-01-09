@@ -35,8 +35,8 @@ export const TopBar = ({
             {/* LADO DERECHO: HERRAMIENTAS */}
             <div className="flex flex-col items-end gap-2 pointer-events-auto">
                 
-                {/* FILA 1: HERRAMIENTAS PRINCIPALES (Tamaño Admin: size=20) */}
-                <div className="flex gap-2 relative">
+                {/* FILA 1: HERRAMIENTAS PRINCIPALES (gap-1) */}
+                <div className="flex gap-1 relative">
                     {/* TEMA */}
                     <div className="relative">
                         <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
@@ -56,7 +56,7 @@ export const TopBar = ({
                         {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
                     </button>
 
-                    {/* NOTIFICACIONES (Color normal, solo opacidad cambia) */}
+                    {/* NOTIFICACIONES */}
                     <button onClick={toggleNotificaciones} className={`p-2 rounded-full border shadow-lg ${base.bar} ${notifEnabled ? '' : 'opacity-50'}`}>
                         {notifEnabled ? <Bell size={20} /> : <BellOff size={20} />}
                     </button>
@@ -66,7 +66,7 @@ export const TopBar = ({
                         {lang.toUpperCase()}
                     </button>
 
-                     {/* INSTALL PWA (Si disponible) */}
+                     {/* INSTALL PWA */}
                      {isInstallable && (
                         <button onClick={handleInstallClick} className={`p-2 rounded-full border shadow-lg text-blue-500 ${base.bar} animate-bounce`}>
                             <Download size={20} />
@@ -74,10 +74,10 @@ export const TopBar = ({
                     )}
                 </div>
 
-                {/* FILA 2: FILTROS EXTRA Y NAVEGACIÓN (Tamaño Reducido: size=16/18) */}
-                <div className="flex gap-2">
+                {/* FILA 2: FILTROS EXTRA Y NAVEGACIÓN (gap-1) */}
+                <div className="flex gap-1">
                     {/* HERRAMIENTAS DE ORDEN/VISTA */}
-                    <div className="flex gap-2 mr-2">
+                    <div className="flex gap-1 mr-1">
                         <button onClick={cycleTextSize} className={`p-1.5 rounded-full border shadow-lg ${base.bar}`}>
                             <Type size={16}/>
                         </button>
@@ -91,12 +91,12 @@ export const TopBar = ({
 
                     {/* --- BOTONES DE NAVEGACIÓN --- */}
                     
-                    {/* 1. CAMBIO A ADMIN (IZQUIERDA) */}
+                    {/* 1. CAMBIO A ADMIN */}
                     <Link href="/admin" className={`p-1.5 rounded-full border shadow-lg flex items-center justify-center ${base.bar} text-blue-500`}>
                         <Shield size={18}/>
                     </Link>
 
-                    {/* 2. CERRAR SESIÓN (DERECHA) */}
+                    {/* 2. CERRAR SESIÓN */}
                     <button onClick={onLogout} className={`p-1.5 rounded-full border shadow-lg flex items-center justify-center ${base.bar} text-red-500`}>
                         <LogOut size={18}/>
                     </button>
