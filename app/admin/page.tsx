@@ -48,9 +48,10 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// TEMAS BRILLANTES (IGUAL A INVITADOS)
+// CORRECCIÓN TEMA GRIS (CARBONE) Y COLORES
 const THEMES = [
-  { name: 'Carbone', color: 'bg-neutral-900', gradient: 'from-neutral-800 to-black', text: 'text-white' },
+  // text-gray-900 en modo claro asegura visibilidad, dark:text-white en oscuro.
+  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-900 dark:text-white' },
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
   { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
@@ -110,7 +111,7 @@ export default function AdminPage() {
   // BULK EDIT STATES
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAction, setBulkAction] = useState<'RECIPE_ADD' | 'RECIPE_REMOVE' | 'EXTRA_ADD' | 'TIME_SET' | 'DESC_SET'>('RECIPE_ADD');
-  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET'); // <--- CORRECCIÓN: Estado restaurado
+  const [bulkMode, setBulkMode] = useState<'SET' | 'REMOVE'>('SET'); 
   const [bulkIngId, setBulkIngId] = useState('');
   const [bulkQty, setBulkQty] = useState<string | number>('');
   const [bulkExtraName, setBulkExtraName] = useState('');
@@ -354,7 +355,7 @@ export default function AdminPage() {
   const addIng = async() => { await supabase.from('ingredientes').insert([{nombre:newIngName, cantidad_disponible:newIngQty, unidad:newIngUnit, categoria:newIngCat}]); cargarDatos(); };
   const delIng = async(id:string) => { await supabase.from('ingredientes').delete().eq('id',id); cargarDatos(); };
   const saveEditIng = async(id:string) => { await supabase.from('ingredientes').update({nombre:editIngForm.nombre, cantidad_disponible:editIngForm.cantidad}).eq('id',id); setEditingIngId(null); cargarDatos(); };
-  const startEditIng = (i:any) => { setEditingIngId(i.id); setEditIngForm({ nombre: i.nombre, cantidad: i.cantidad_disponible, unidad: i.unidad, categoria: i.categoria || 'General' }); };
+  const startEditIng = (i:any) => { setEditingIngId(i.id); setEditIngForm(i); };
   const cancelEditIng = () => setEditingIngId(null);
   const quickUpdateStock = async(id:string, c:number, a:number) => { await supabase.from('ingredientes').update({cantidad_disponible:c+a}).eq('id',id); cargarDatos(); };
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
@@ -364,10 +365,10 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-        {/* FONDO GRADIENTE (Z-0) */}
+        {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO: SE AGREGÓ Z-0 EXPLICITO */}
         <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-20 z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
-       {/* HEADER (Z-50) */}
+       {/* HEADER (Z-INDEX 50) */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
               <img src="/logo.png" className="h-10 w-auto" />
@@ -382,7 +383,7 @@ export default function AdminPage() {
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
               <div className="flex gap-2">
                   <div className="relative">
-                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white en lugar de currentTheme.text */}
+                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white */}
                       <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} text-gray-800 dark:text-white`}>
                           <Palette size={20} />
                       </button>
@@ -412,7 +413,7 @@ export default function AdminPage() {
           </div>
        </div>
 
-       {/* CONTENIDO (Z-10 RELATIVE) */}
+       {/* CONTENIDO (Z-INDEX 10 RELATIVO) */}
        <div className="pt-32 px-4 pb-36 max-w-4xl mx-auto relative z-10">
            {view === 'cocina' && (
                 <>
@@ -446,19 +447,7 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* BARRA INFERIOR RESTAURADA */}
-       <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
-          <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
-          <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>
-          <button onClick={() => setView('menu')} className={`flex flex-col items-center gap-1 ${view === 'menu' ? currentTheme.text : base.subtext}`}><ChefHat size={20} /><span className="text-[9px] font-bold">MENU</span></button>
-          <button onClick={() => setView('ranking')} className={`flex flex-col items-center gap-1 ${view === 'ranking' ? currentTheme.text : base.subtext}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">RANK</span></button>
-          <button onClick={() => setView('usuarios')} className={`flex flex-col items-center gap-1 ${view === 'usuarios' ? currentTheme.text : base.subtext}`}><Users size={20} /><span className="text-[9px] font-bold">USERS</span></button>
-          <button onClick={() => setView('ingredientes')} className={`flex flex-col items-center gap-1 ${view === 'ingredientes' ? currentTheme.text : base.subtext}`}><ShoppingBag size={20} /><span className="text-[9px] font-bold">INV</span></button>
-          <button onClick={() => setView('logs')} className={`flex flex-col items-center gap-1 ${view === 'logs' ? currentTheme.text : base.subtext}`}><ShieldAlert size={20} /><span className="text-[9px] font-bold">Logs</span></button>
-          <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
-       </div>
-
-       {/* MODAL ONLINE USERS */}
+       {/* MODAL ONLINE USERS (Sin input de invitados) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
@@ -476,7 +465,7 @@ export default function AdminPage() {
         </div>
        )}
        
-       {/* MODAL DE LIMPIEZA */}
+       {/* MODAL DE LIMPIEZA - CORRECCIÓN WINDOWS: SELECT BACKGROUND */}
        {showCleanModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
             <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
@@ -491,13 +480,13 @@ export default function AdminPage() {
                     </div>
                     <div>
                         <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Estado</label>
-                        <select value={cleanForm.status} onChange={e => setCleanForm({...cleanForm, status: e.target.value})} className={`w-full p-3 rounded-xl border outline-none ${base.input}`}>
+                        <select value={cleanForm.status} onChange={e => setCleanForm({...cleanForm, status: e.target.value})} className={`w-full p-3 rounded-xl border outline-none ${base.input} bg-white dark:bg-neutral-900 text-black dark:text-white`}>
                             <option value="all">TODOS</option><option value="pendiente">Solo Pendientes</option><option value="cocinando">Solo En Horno</option><option value="entregado">Solo Entregados</option>
                         </select>
                     </div>
                     <div>
                         <label className="text-xs font-bold uppercase opacity-60 mb-1 block">Usuario</label>
-                        <select value={(cleanForm as any).user || 'all'} onChange={e => setCleanForm({...cleanForm, user: e.target.value} as any)} className={`w-full p-3 rounded-xl border outline-none ${base.input}`}>
+                        <select value={(cleanForm as any).user || 'all'} onChange={e => setCleanForm({...cleanForm, user: e.target.value} as any)} className={`w-full p-3 rounded-xl border outline-none ${base.input} bg-white dark:bg-neutral-900 text-black dark:text-white`}>
                             <option value="all">TODOS LOS USUARIOS</option>
                             {allUsersList.map((u:any) => <option key={u.nombre} value={u.nombre}>{u.nombre}</option>)}
                         </select>
@@ -520,6 +509,10 @@ export default function AdminPage() {
                     <h3 className="text-xl font-bold flex items-center gap-2"><Layers size={24}/> Edición Masiva</h3>
                     <button onClick={() => setShowBulkModal(false)}><X size={24}/></button>
                 </div>
+                <div className="flex gap-2 mb-4 bg-neutral-800/50 p-1 rounded-xl">
+                    <button onClick={() => setBulkMode('SET')} className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 ${bulkMode === 'SET' ? 'bg-blue-600 text-white' : 'opacity-60'}`}><Plus size={16}/> Fijar</button>
+                    <button onClick={() => setBulkMode('REMOVE')} className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 ${bulkMode === 'REMOVE' ? 'bg-red-600 text-white' : 'opacity-60'}`}><Trash2 size={16}/> Eliminar</button>
+                </div>
                 <div className="space-y-4 mb-4 overflow-y-auto flex-1 pr-2">
                     {/* SELECTOR DE ACCIÓN */}
                     <div>
@@ -538,7 +531,7 @@ export default function AdminPage() {
                         {(bulkAction === 'RECIPE_ADD' || bulkAction === 'RECIPE_REMOVE' || bulkAction === 'EXTRA_ADD') && (
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Ingrediente</label>
-                                <select value={bulkIngId} onChange={(e) => setBulkIngId(e.target.value)} className={`w-full p-2.5 rounded-lg border outline-none text-sm ${base.input}`}>
+                                <select value={bulkIngId} onChange={(e) => setBulkIngId(e.target.value)} className={`w-full p-2.5 rounded-lg border outline-none text-sm ${base.input} bg-white dark:bg-neutral-900 text-black dark:text-white`}>
                                     <option value="">Seleccionar...</option>
                                     {ingredientes.map(ing => (<option key={ing.id} value={ing.id}>{ing.nombre}</option>))}
                                 </select>
@@ -628,6 +621,18 @@ export default function AdminPage() {
             <img src={imageToView} className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
+      
+       {/* BARRA INFERIOR DE PESTAÑAS (RESTAURADA) */}
+       <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-full p-3 flex justify-around items-center ${base.bar}`}>
+          <button onClick={() => setView('cocina')} className={`flex flex-col items-center gap-1 ${view === 'cocina' ? currentTheme.text : base.subtext}`}><LayoutDashboard size={20} /><span className="text-[9px] font-bold">COCINA</span></button>
+          <button onClick={() => setView('pedidos')} className={`flex flex-col items-center gap-1 ${view === 'pedidos' ? currentTheme.text : base.subtext}`}><List size={20} /><span className="text-[9px] font-bold">PEDIDOS</span></button>
+          <button onClick={() => setView('menu')} className={`flex flex-col items-center gap-1 ${view === 'menu' ? currentTheme.text : base.subtext}`}><ChefHat size={20} /><span className="text-[9px] font-bold">MENU</span></button>
+          <button onClick={() => setView('ranking')} className={`flex flex-col items-center gap-1 ${view === 'ranking' ? currentTheme.text : base.subtext}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">RANK</span></button>
+          <button onClick={() => setView('usuarios')} className={`flex flex-col items-center gap-1 ${view === 'usuarios' ? currentTheme.text : base.subtext}`}><Users size={20} /><span className="text-[9px] font-bold">USERS</span></button>
+          <button onClick={() => setView('ingredientes')} className={`flex flex-col items-center gap-1 ${view === 'ingredientes' ? currentTheme.text : base.subtext}`}><ShoppingBag size={20} /><span className="text-[9px] font-bold">INV</span></button>
+          <button onClick={() => setView('logs')} className={`flex flex-col items-center gap-1 ${view === 'logs' ? currentTheme.text : base.subtext}`}><ShieldAlert size={20} /><span className="text-[9px] font-bold">Logs</span></button>
+          <button onClick={() => setView('config')} className={`flex flex-col items-center gap-1 ${view === 'config' ? currentTheme.text : base.subtext}`}><Settings size={20} /><span className="text-[9px] font-bold">CONF</span></button>
+       </div>
     </div>
   );
 }
