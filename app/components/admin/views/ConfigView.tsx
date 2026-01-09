@@ -14,7 +14,7 @@ export const ConfigView = ({
             {/* 1. CAPACIDAD DEL EVENTO */}
             <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <Users className="text-blue-500" /> Capacidad del Evento
+                    <Users className={currentTheme.text} /> Capacidad del Evento
                 </h3>
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
@@ -35,7 +35,7 @@ export const ConfigView = ({
             {/* 2. MENSAJE DE BIENVENIDA */}
             <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <MessageSquare className="text-purple-500" /> Mensaje de Bienvenida
+                    <MessageSquare className={currentTheme.text} /> Mensaje de Bienvenida
                 </h3>
                 <div className="space-y-3">
                     <div className="text-xs opacity-60 p-3 rounded-xl border border-dashed border-gray-500/30">
@@ -68,13 +68,12 @@ export const ConfigView = ({
             {/* 3. CAMBIAR CONTRASEÑA */}
             <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <Lock className="text-orange-500" /> Contraseña Admin
+                    <Lock className={currentTheme.text} /> Contraseña Admin
                 </h3>
                 <div className="space-y-3">
                     <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nueva contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
                     <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirmar contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
                     
-                    {/* BOTÓN ACTUALIZADO CON COLOR DEL TEMA */}
                     <button 
                         onClick={changePass} 
                         disabled={!newPass || newPass !== confirmPass} 
@@ -88,18 +87,26 @@ export const ConfigView = ({
             {/* 4. DURACIÓN SESIÓN */}
             <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <Clock className="text-green-500" /> Sesión Admin
+                    <Clock className={currentTheme.text} /> Sesión Admin
                 </h3>
                 <div className="flex gap-2">
                     {[1, 4, 12, 24].map(h => (
-                        <button key={h} onClick={() => setSessionDuration(h * 60 * 60 * 1000)} className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all ${sessionDuration === h * 60 * 60 * 1000 ? 'bg-green-500 text-white border-green-500' : base.buttonSec}`}>
+                        <button 
+                            key={h} 
+                            onClick={() => setSessionDuration(h * 60 * 60 * 1000)} 
+                            className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all ${
+                                sessionDuration === h * 60 * 60 * 1000 
+                                ? `${currentTheme.color} text-white border-transparent` 
+                                : base.buttonSec
+                            }`}
+                        >
                             {h}h
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* 5. ZONA DE PELIGRO */}
+            {/* 5. ZONA DE PELIGRO (Se mantiene rojo por semántica de peligro) */}
             <div className={`p-5 rounded-3xl border border-red-500/30 bg-red-500/5`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500">
                     <Type className="rotate-180" /> Zona de Peligro
