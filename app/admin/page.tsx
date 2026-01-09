@@ -141,6 +141,10 @@ export default function AdminPage() {
 
   const base = isDarkMode ? { bg: "bg-neutral-950 text-white", card: "bg-neutral-900 border-neutral-800", input: "bg-black border-neutral-700 text-white placeholder-neutral-600", header: "bg-neutral-900/90 border-neutral-800", subtext: "text-neutral-500", textHead: "text-neutral-300", buttonSec: "bg-neutral-800 text-neutral-400 hover:text-white border-white/10", buttonIcon: "bg-neutral-800 text-neutral-400 hover:text-white", divider: "border-neutral-800", metric: "bg-neutral-900 border-neutral-800", blocked: "bg-red-900/10 border-red-900/30", bar: "bg-neutral-900/50 backdrop-blur-md border-white/10 shadow-lg text-white border", innerCard: "bg-neutral-800 border-neutral-700 text-white", uploadBox: "bg-neutral-800 border-neutral-600 hover:bg-neutral-700" } : { bg: "bg-gray-100 text-gray-900", card: "bg-white border-gray-200 shadow-sm", input: "bg-white border-gray-300 text-gray-900 placeholder-gray-400", header: "bg-white/90 border-gray-200", subtext: "text-gray-500", textHead: "text-gray-800", buttonSec: "bg-white text-gray-600 hover:text-black border-gray-300", buttonIcon: "bg-gray-200 text-gray-600 hover:text-black", divider: "border-gray-200", metric: "bg-white border-gray-200 shadow-sm", blocked: "bg-red-50 border-red-200", bar: "bg-white/50 backdrop-blur-md border-gray-300 shadow-lg text-gray-900 border", innerCard: "bg-neutral-100 border-neutral-200 text-gray-900", uploadBox: "bg-neutral-100 border-neutral-300 hover:bg-neutral-200" };
 
+  // Clases para botones estilo píldora
+  const innerBtnClass = "p-2 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
+  const innerBtnSmallClass = "p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
+
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
   // AUTH
@@ -348,7 +352,7 @@ export default function AdminPage() {
           if (ing) {
               const deduct = totalDeductions[ingId];
               const newQ = ing.cantidad_disponible - deduct;
-              setIngredientes(prev => prev.map(i => i.id === ingId ? { ...i, cantidad_disponible: newQ } : i));
+              setIngredientes(prev => prev.map(i => i.id === ing.id ? { ...i, cantidad_disponible: newQ } : i));
               updates.push(supabase.from('ingredientes').update({ cantidad_disponible: newQ }).eq('id', ingId));
           }
       }
@@ -474,47 +478,64 @@ export default function AdminPage() {
         <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
        {/* HEADER (Z-INDEX 50) */}
-       <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
+       <div className={`fixed top-1 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
+          
+          {/* LADO IZQUIERDO: LOGO Y USUARIOS (Píldora) */}
           <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={() => setShowOnlineModal(true)}>
-              <img src="/logo.png" className="h-10 w-auto" />
+              <img src="/logo.png" className="h-8 w-auto" />
               <div className="leading-tight">
-                  <h1 className="font-bold text-sm">Modo Pizzaiolo</h1>
+                  <h1 className="font-bold text-xs">Modo Pizzaiolo</h1>
                   <p className="text-[10px] opacity-70 flex items-center gap-1">
                       <Users size={10} className="text-green-500 animate-pulse"/> {onlineUsers} / {config.total_invitados || 0}
                   </p>
               </div>
           </div>
           
-          <div className="flex flex-col items-end gap-2 pointer-events-auto">
-              <div className="flex gap-2">
-                  <div className="relative">
-                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white */}
-                      <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} text-gray-800 dark:text-white`}>
-                          <Palette size={20} />
-                      </button>
-                      {showThemeSelector && (
-                          <div className={`absolute top-12 right-0 p-3 rounded-2xl shadow-xl border grid grid-cols-5 gap-2 w-64 ${base.card}`}>
-                              {THEMES.map(t => (
-                                  <button key={t.name} onClick={() => selectTheme(t)} className={`w-8 h-8 rounded-full ${t.color} border-2 ${currentTheme.name === t.name ? 'border-white shadow-lg scale-110' : 'border-transparent opacity-80'}`} title={t.name}></button>
-                              ))}
-                          </div>
-                      )}
-                  </div>
-                  <button onClick={toggleDarkMode} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
-                      {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
-                  </button>
-                  <button onClick={toggleCompact} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
-                      {isCompact ? <Maximize2 size={20}/> : <Minimize2 size={20}/>}
-                  </button>
-                  <button onClick={toggleOrden} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
-                      {orden === 'estado' ? <ArrowUpNarrowWide size={20}/> : <ArrowDownAZ size={20}/>}
-                  </button>
-              </div>
+          {/* LADO DERECHO: HERRAMIENTAS */}
+          <div className="flex flex-col items-end gap-1 pointer-events-auto">
+              
+                {/* FILA 1: PÍLDORA DE CONFIGURACIÓN Y VISTA */}
+                <div className={`flex items-center gap-1 p-1 rounded-full shadow-lg backdrop-blur-md border ${base.bar}`}>
+                    {/* TEMA */}
+                    <div className="relative">
+                        <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`${innerBtnClass} ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                            <Palette size={20} />
+                        </button>
+                        {showThemeSelector && (
+                            <div className={`absolute top-12 right-0 p-3 rounded-2xl shadow-xl border grid grid-cols-5 gap-2 w-64 ${base.card} z-[100]`}>
+                                {THEMES.map((t: any) => (
+                                    <button key={t.name} onClick={() => selectTheme(t)} className={`w-8 h-8 rounded-full ${t.color} border-2 ${currentTheme.name === t.name ? 'border-white shadow-lg scale-110' : 'border-transparent opacity-80'}`} title={t.name}></button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
-              <div className="flex gap-2">
-                  <button onClick={()=>window.location.href='/'} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-green-500`}><Users size={18}/></button>
-                  <button onClick={logout} className={`p-1.5 rounded-full border shadow-lg ${base.bar} text-red-500`}><LogOut size={18}/></button>
-              </div>
+                    {/* MODO OSCURO */}
+                    <button onClick={toggleDarkMode} className={innerBtnClass}>
+                        {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
+                    </button>
+
+                    {/* SEPARADOR */}
+                    <div className="w-px h-4 bg-current opacity-20 mx-0.5"></div>
+
+                    {/* HERRAMIENTAS DE VISTA */}
+                    <button onClick={toggleCompact} className={innerBtnSmallClass}>
+                        {isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}
+                    </button>
+                    <button onClick={toggleOrden} className={innerBtnSmallClass}>
+                        {orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}
+                    </button>
+                </div>
+
+                {/* FILA 2: PÍLDORA DE NAVEGACIÓN */}
+                <div className={`flex items-center gap-1 p-1 rounded-full shadow-lg backdrop-blur-md border ${base.bar}`}>
+                    <button onClick={()=>window.location.href='/'} className={`${innerBtnSmallClass} text-green-500`}>
+                        <Users size={18}/>
+                    </button>
+                    <button onClick={logout} className={`${innerBtnSmallClass} text-red-500`}>
+                        <LogOut size={18}/>
+                    </button>
+                </div>
           </div>
        </div>
 
