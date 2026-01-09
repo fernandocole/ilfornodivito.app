@@ -71,7 +71,7 @@ export const KitchenView = ({
 
     return (
         <div className="space-y-4 pb-24">
-            {/* FILTROS SIEMPRE VISIBLES - ESTABAN DENTRO DEL IF, AHORA ESTAN FUERA */}
+            {/* FILTROS SIEMPRE VISIBLES */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button onClick={() => setFilter('with_orders')} className={getFilterBtnClass(filter === 'with_orders')}>Con Pedidos</button>
                 <button onClick={() => setFilter('all')} className={getFilterBtnClass(filter === 'all')}>Todas</button>
@@ -111,15 +111,15 @@ export const KitchenView = ({
                         }
 
                         return (
-                            <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'border-orange-500/50 ring-1 ring-orange-500/20' : ''} ${isCompact ? 'p-3' : 'p-4'}`}>
+                            <div key={p.id} className={`${base.card} rounded-3xl border relative overflow-hidden transition-all ${p.cocinando ? 'ring-1 ring-opacity-20' : ''} ${isCompact ? 'p-3' : 'p-4'}`}>
+                                {/* BARRA DE PROGRESO DE FONDO (COLOR DEL TEMA) */}
                                 {p.cocinando && (
-                                    <div className="absolute top-0 left-0 bottom-0 bg-orange-500/10 transition-all duration-1000 ease-linear pointer-events-none" style={{ width: `${progress}%` }}></div>
+                                    <div className={`absolute top-0 left-0 bottom-0 ${currentTheme.color} opacity-10 transition-all duration-1000 ease-linear pointer-events-none`} style={{ width: `${progress}%` }}></div>
                                 )}
 
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            {/* Titulo neutro usando base.text */}
                                             <h3 className={`font-black text-xl leading-none ${base.text}`}>{p.nombre}</h3>
                                             {p.cocinando && (
                                                 <div className="flex items-center gap-2 mt-1">
@@ -172,9 +172,9 @@ export const KitchenView = ({
                                         </div>
 
                                         {/* EN HORNO */}
-                                        <div className={`p-2 rounded-xl border relative flex flex-col ${p.cocinando ? 'bg-orange-500/10 border-orange-500/30' : base.innerCard}`}>
+                                        <div className={`p-2 rounded-xl border relative flex flex-col ${p.cocinando ? `${currentTheme.color.replace('bg-', 'bg-opacity-10 bg-')} border-opacity-30 border-${currentTheme.color.replace('bg-', '')}` : base.innerCard}`}>
                                             <div className="flex justify-between items-center mb-2 border-b border-gray-500/10 pb-1">
-                                                <div className={`flex items-center gap-1 text-xs font-bold uppercase ${p.cocinando ? 'text-orange-500' : 'text-gray-500'}`}>
+                                                <div className={`flex items-center gap-1 text-xs font-bold uppercase ${p.cocinando ? currentTheme.text.replace('text-white', '') : 'text-gray-500'}`}>
                                                     <Flame size={12} className={p.cocinando ? 'animate-bounce' : ''}/> Horno ({p.enHorno})
                                                 </div>
                                                 {p.enHorno > 0 && (
@@ -205,7 +205,7 @@ export const KitchenView = ({
                                         </div>
                                     </div>
 
-                                    {/* ACCIONES - Usan color del tema */}
+                                    {/* ACCIONES */}
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => {
