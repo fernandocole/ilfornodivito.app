@@ -48,9 +48,9 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// TEMAS BRILLANTES Y AJUSTE TEMA GRIS
+// TEMAS BRILLANTES (CARBONE CORREGIDO A GRAY-800 Y TEXTO BLANCO EN DARK)
 const THEMES = [
-  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-900 dark:text-white' }, // Texto visible en ambos modos
+  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-900 dark:text-gray-100' },
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
   { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
@@ -151,7 +151,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // CRÍTICO: CARGAR PREFERENCIAS Y APLICAR CLASE DARK AL HTML
+  // PERSISTENCIA DE TEMA Y CLASE DARK
   useEffect(() => {
       const savedTheme = localStorage.getItem('vito-admin-theme');
       const savedDark = localStorage.getItem('vito-admin-dark');
@@ -161,14 +161,12 @@ export default function AdminPage() {
           if (found) setCurrentTheme(found);
       }
       
-      // Aplicar Dark Mode al inicio
       if (savedDark !== null) {
           const isDark = savedDark === 'true';
           setIsDarkMode(isDark);
           if (isDark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
       } else {
-          // Default a Dark
           setIsDarkMode(true);
           document.documentElement.classList.add('dark');
       }
@@ -262,7 +260,6 @@ export default function AdminPage() {
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
   // --- HELPER FUNCTIONS ---
-  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE Y APLICAR CLASE DARK
   const toggleDarkMode = () => { 
       const newMode = !isDarkMode;
       setIsDarkMode(newMode); 
@@ -272,7 +269,7 @@ export default function AdminPage() {
   };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
-  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE
+  
   const selectTheme = (t:any) => { 
       setCurrentTheme(t); 
       localStorage.setItem('vito-admin-theme', t.name);
@@ -396,7 +393,7 @@ export default function AdminPage() {
   const addIng = async() => { await supabase.from('ingredientes').insert([{nombre:newIngName, cantidad_disponible:newIngQty, unidad:newIngUnit, categoria:newIngCat}]); cargarDatos(); };
   const delIng = async(id:string) => { await supabase.from('ingredientes').delete().eq('id',id); cargarDatos(); };
   const saveEditIng = async(id:string) => { await supabase.from('ingredientes').update({nombre:editIngForm.nombre, cantidad_disponible:editIngForm.cantidad}).eq('id',id); setEditingIngId(null); cargarDatos(); };
-  const startEditIng = (i:any) => { setEditingIngId(i.id); setEditIngForm({ nombre: i.nombre, cantidad: i.cantidad_disponible, unidad: i.unidad, categoria: i.categoria || 'General' }); };
+  const startEditIng = (i:any) => { setEditingIngId(i.id); setEditIngForm(i); };
   const cancelEditIng = () => setEditingIngId(null);
   const quickUpdateStock = async(id:string, c:number, a:number) => { await supabase.from('ingredientes').update({cantidad_disponible:c+a}).eq('id',id); cargarDatos(); };
   const toggleBulkPizza = (pid: string) => { setBulkSelectedPizzas(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]); };
@@ -406,8 +403,8 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-        {/* FONDO GRADIENTE (Z-INDEX 0) */}
-        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-0 z-0 rounded-b-[3rem] pointer-events-none`}></div>
+        {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO: SE AGREGÓ Z-0 EXPLICITO */}
+        <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
        {/* HEADER (Z-INDEX 50) */}
        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
@@ -424,6 +421,7 @@ export default function AdminPage() {
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
               <div className="flex gap-2">
                   <div className="relative">
+                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white */}
                       <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} text-gray-800 dark:text-white`}>
                           <Palette size={20} />
                       </button>
@@ -505,7 +503,7 @@ export default function AdminPage() {
         </div>
        )}
        
-       {/* MODAL DE LIMPIEZA */}
+       {/* MODAL DE LIMPIEZA - CORRECCIÓN WINDOWS: SELECT BACKGROUND */}
        {showCleanModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
             <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
@@ -541,7 +539,7 @@ export default function AdminPage() {
         </div>
        )}
 
-       {/* MODAL BULK EDIT */}
+       {/* MODAL BULK EDIT - CORRECCIÓN WINDOWS: SELECT BACKGROUND */}
        {showBulkModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowBulkModal(false)}>
             <div className={`w-full max-w-lg rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col max-h-[90vh]`} onClick={e => e.stopPropagation()}>
