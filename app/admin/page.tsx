@@ -48,9 +48,9 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// TEMAS BRILLANTES (CORRECCIÓN CARBONE APLICADA)
+// TEMAS (CARBONE ACTUALIZADO A NEUTRAL-700)
 const THEMES = [
-  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-300 dark:text-gray-100' },
+  { name: 'Carbone', color: 'bg-neutral-700', gradient: 'from-neutral-600 to-black', text: 'text-gray-300 dark:text-gray-100' },
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
   { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
@@ -250,7 +250,8 @@ export default function AdminPage() {
   }, [autenticado]);
 
   const stockEstimadoNueva = useMemo(() => calcularStockDinamico(newPizzaIngredients, ingredientes), [newPizzaIngredients, ingredientes]);
-  // CORRECCIÓN: Manejo robusto de activeCategories para evitar reseteos
+  
+  // CORRECCIÓN: CATEGORÍAS ROBUSTAS
   const activeCategories: string[] = useMemo(() => { 
       try { 
           const parsed = JSON.parse(config.categoria_activa); 
