@@ -18,7 +18,7 @@ const supabase = createClient(
 );
 
 const THEMES = [
-  { name: 'Carbone', color: 'bg-neutral-600', gradient: 'from-neutral-700 to-neutral-900', border: 'border-neutral-600/40', text: 'text-neutral-400' },
+  { name: 'Carbone', color: 'bg-neutral-700', gradient: 'from-neutral-600 to-black', border: 'border-neutral-600/40', text: 'text-gray-300 dark:text-gray-100' },
   { name: 'Turquesa', color: 'bg-cyan-600', gradient: 'from-cyan-600 to-teal-900', border: 'border-cyan-600/40', text: 'text-cyan-400' },
   { name: 'Pistacho', color: 'bg-lime-600', gradient: 'from-lime-600 to-green-900', border: 'border-lime-600/40', text: 'text-lime-400' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-600 to-rose-900', border: 'border-red-600/40', text: 'text-red-500' },
@@ -362,18 +362,18 @@ export default function VitoPizzaApp() {
                       const adisConEsteIng = adicionales.filter(a => a.ingrediente_id === item.ingrediente_id);
                       
                       if(adisConEsteIng.length > 0) {
-                         // Buscar pedidos pendientes que tengan estos adicionales
-                         pedidos.filter(p => p.estado === 'pendiente').forEach(p => {
-                             if(p.detalles_adicionales) {
-                                 p.detalles_adicionales.forEach((name: string) => {
-                                     // Ver si 'name' corresponde a uno de los adicionales que usan este ingrediente
-                                     // OJO: El nombre del adicional debe coincidir y pertenecer a la pizza correcta? 
-                                     // Generalmente el nombre es único por pizza.
-                                     const match = adisConEsteIng.find(a => a.nombre_visible === name && a.pizza_id === p.pizza_id);
-                                     if(match) reservadosExtras += match.cantidad_requerida;
-                                 });
-                             }
-                         });
+                          // Buscar pedidos pendientes que tengan estos adicionales
+                          pedidos.filter(p => p.estado === 'pendiente').forEach(p => {
+                              if(p.detalles_adicionales) {
+                                  p.detalles_adicionales.forEach((name: string) => {
+                                      // Ver si 'name' corresponde a uno de los adicionales que usan este ingrediente
+                                      // OJO: El nombre del adicional debe coincidir y pertenecer a la pizza correcta? 
+                                      // Generalmente el nombre es único por pizza.
+                                      const match = adisConEsteIng.find(a => a.nombre_visible === name && a.pizza_id === p.pizza_id);
+                                      if(match) reservadosExtras += match.cantidad_requerida;
+                                  });
+                              }
+                          });
                       }
 
                       const totalReservado = reservadosBase + reservadosExtras;
