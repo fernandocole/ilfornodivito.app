@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Trash2, Edit3, Save, X, Plus, Package, Share2, Smartphone, MessageCircle } from 'lucide-react';
+import { Trash2, Edit3, Save, X, Plus, Package, Share2, Smartphone, MessageCircle, Search } from 'lucide-react';
 
 export const InventoryView = ({ 
     base, currentTheme, ingredients, newIngName, setNewIngName, newIngQty, setNewIngQty, 
@@ -10,6 +10,9 @@ export const InventoryView = ({
 }: any) => {
     
     const [showShareModal, setShowShareModal] = useState(false);
+    
+    // NUEVO: Estado para el buscador
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Detección estricta de modo oscuro para forzar estilos
     const isDark = base.bg.includes('neutral-950') || base.bg.includes('bg-gray-900') || base.bg.includes('text-white');
@@ -29,10 +32,26 @@ export const InventoryView = ({
         return ['Todos', 'General', ...Array.from(cats).filter(c => c !== 'General').sort()];
     }, [ingredients]);
 
+    // LÓGICA DE FILTRADO ACTUALIZADA (Categoría + Búsqueda)
     const filteredIngredients = useMemo(() => {
-        if (inventoryFilterCategory === 'Todos') return ingredients;
-        return ingredients.filter((i: any) => (i.categoria || 'General') === inventoryFilterCategory);
-    }, [ingredients, inventoryFilterCategory]);
+        let result = ingredients;
+
+        // 1. Filtrar por Categoría
+        if (inventoryFilterCategory !== 'Todos') {
+            result = result.filter((i: any) => (i.categoria || 'General') === inventoryFilterCategory);
+        }
+
+        // 2. Filtrar por Búsqueda
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase();
+            result = result.filter((i: any) => 
+                i.nombre.toLowerCase().includes(lowerTerm) || 
+                (i.categoria && i.categoria.toLowerCase().includes(lowerTerm))
+            );
+        }
+
+        return result;
+    }, [ingredients, inventoryFilterCategory, searchTerm]);
 
     const generateShareText = () => {
         if (filteredIngredients.length === 0) return "Lista vacía";
@@ -78,6 +97,19 @@ export const InventoryView = ({
                 >
                     <Share2 size={16} /> Compartir
                 </button>
+            </div>
+
+            {/* BARRA DE BÚSQUEDA (NUEVO) */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
+                <input 
+                    type="text" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar ingrediente..." 
+                    className={`w-full pl-10 p-3 rounded-xl border outline-none text-sm ${base.input}`}
+                    style={inputStyle}
+                />
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -129,6 +161,7 @@ export const InventoryView = ({
                         style={inputStyle}
                     />
                     
+                    {/* SELECTOR UNIDAD NUEVO: FONDO NEGRO EXPLICITO */}
                     <select 
                         value={newIngUnit} 
                         onChange={e => setNewIngUnit(e.target.value)} 
@@ -187,6 +220,7 @@ export const InventoryView = ({
                                             style={inputStyle}
                                         />
                                         
+                                        {/* SELECTOR UNIDAD EDICIÓN: FONDO NEGRO EXPLICITO */}
                                         <select 
                                             value={editIngForm.unidad} 
                                             onChange={e => setEditIngForm({...editIngForm, unidad: e.target.value})} 
