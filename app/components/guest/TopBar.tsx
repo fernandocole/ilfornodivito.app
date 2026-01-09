@@ -35,15 +35,15 @@ export const TopBar = ({
             {/* LADO DERECHO: HERRAMIENTAS */}
             <div className="flex flex-col items-end gap-2 pointer-events-auto">
                 
-                {/* FILA 1: HERRAMIENTAS DE VISUALIZACIÓN */}
-                <div className="flex gap-2">
+                {/* FILA 1: HERRAMIENTAS PRINCIPALES (Tamaño Admin: size=20) */}
+                <div className="flex gap-2 relative">
                     {/* TEMA */}
                     <div className="relative">
                         <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                            <Palette size={18} />
+                            <Palette size={20} />
                         </button>
                         {showThemeSelector && (
-                            <div className={`absolute top-12 right-0 p-3 rounded-2xl shadow-xl border grid grid-cols-5 gap-2 w-64 ${base.card}`}>
+                            <div className={`absolute top-12 right-0 p-3 rounded-2xl shadow-xl border grid grid-cols-5 gap-2 w-64 ${base.card} z-[100]`}>
                                 {THEMES.map((t: any) => (
                                     <button key={t.name} onClick={() => changeTheme(t)} className={`w-8 h-8 rounded-full ${t.color} border-2 border-transparent hover:scale-110 transition-transform`} title={t.name}></button>
                                 ))}
@@ -53,12 +53,12 @@ export const TopBar = ({
 
                     {/* MODO OSCURO */}
                     <button onClick={toggleDarkMode} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
-                        {isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}
+                        {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
                     </button>
 
-                    {/* NOTIFICACIONES */}
-                    <button onClick={toggleNotificaciones} className={`p-2 rounded-full border shadow-lg ${base.bar} ${notifEnabled ? 'text-yellow-500' : 'opacity-50'}`}>
-                        {notifEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+                    {/* NOTIFICACIONES (Color normal, solo opacidad cambia) */}
+                    <button onClick={toggleNotificaciones} className={`p-2 rounded-full border shadow-lg ${base.bar} ${notifEnabled ? '' : 'opacity-50'}`}>
+                        {notifEnabled ? <Bell size={20} /> : <BellOff size={20} />}
                     </button>
                     
                     {/* IDIOMA */}
@@ -69,14 +69,14 @@ export const TopBar = ({
                      {/* INSTALL PWA (Si disponible) */}
                      {isInstallable && (
                         <button onClick={handleInstallClick} className={`p-2 rounded-full border shadow-lg text-blue-500 ${base.bar} animate-bounce`}>
-                            <Download size={18} />
+                            <Download size={20} />
                         </button>
                     )}
                 </div>
 
-                {/* FILA 2: FILTROS EXTRA (Opcionales, ocultos en móvil pequeño si se desea) y ACCIONES PRINCIPALES */}
+                {/* FILA 2: FILTROS EXTRA Y NAVEGACIÓN (Tamaño Reducido: size=16/18) */}
                 <div className="flex gap-2">
-                    {/* HERRAMIENTAS DE ORDEN/VISTA (Pequeñas) */}
+                    {/* HERRAMIENTAS DE ORDEN/VISTA */}
                     <div className="flex gap-2 mr-2">
                         <button onClick={cycleTextSize} className={`p-1.5 rounded-full border shadow-lg ${base.bar}`}>
                             <Type size={16}/>
@@ -89,7 +89,7 @@ export const TopBar = ({
                         </button>
                     </div>
 
-                    {/* --- BOTONES DE NAVEGACIÓN (TAMAÑO ADMIN) --- */}
+                    {/* --- BOTONES DE NAVEGACIÓN --- */}
                     
                     {/* 1. CAMBIO A ADMIN (IZQUIERDA) */}
                     <Link href="/admin" className={`p-1.5 rounded-full border shadow-lg flex items-center justify-center ${base.bar} text-blue-500`}>
