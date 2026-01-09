@@ -1,4 +1,4 @@
-import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, Power, Check, Layers } from 'lucide-react';
+import { Plus, Trash2, Image, Save, X, Edit3, Copy, Clock, Power, Check, Layers, Search } from 'lucide-react';
 import { useState } from 'react';
 
 export const MenuView = ({ 
@@ -17,6 +17,9 @@ export const MenuView = ({
 
     const [expandedPizza, setExpandedPizza] = useState<string | null>(null);
     const [showNewForm, setShowNewForm] = useState(false);
+    
+    // NUEVO: Estado para el buscador
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Estados para inputs de tiempo
     const [timeMin, setTimeMin] = useState<number>(0);
@@ -72,9 +75,24 @@ export const MenuView = ({
         updateP(id, 'activa', !currentState);
     };
 
+    // LÓGICA DE FILTRADO ACTUALIZADA (Search + Type)
     let filteredPizzas = [...pizzas];
-    if (typeFilter !== 'all') filteredPizzas = filteredPizzas.filter((p: any) => p.tipo === typeFilter);
     
+    // 1. Filtro por búsqueda
+    if (searchTerm) {
+        const lowerTerm = searchTerm.toLowerCase();
+        filteredPizzas = filteredPizzas.filter((p: any) => 
+            p.nombre.toLowerCase().includes(lowerTerm) || 
+            (p.descripcion && p.descripcion.toLowerCase().includes(lowerTerm))
+        );
+    }
+
+    // 2. Filtro por tipo
+    if (typeFilter !== 'all') {
+        filteredPizzas = filteredPizzas.filter((p: any) => p.tipo === typeFilter);
+    }
+    
+    // 3. Ordenamiento
     if (sortOrder === 'alpha') filteredPizzas.sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
     else if (sortOrder === 'date') filteredPizzas.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     else if (sortOrder === 'type') filteredPizzas.sort((a: any, b: any) => a.tipo.localeCompare(b.tipo));
@@ -103,6 +121,18 @@ export const MenuView = ({
                             {showNewForm ? <X size={16}/> : <Plus size={16}/>} {showNewForm ? 'Cerrar' : 'Nuevo Item'}
                         </button>
                     </div>
+                </div>
+
+                {/* NUEVO: BARRA DE BÚSQUEDA */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
+                    <input 
+                        type="text" 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar plato o descripción..." 
+                        className={`w-full pl-10 p-3 rounded-xl border outline-none text-sm ${base.input}`}
+                    />
                 </div>
 
                 {/* CATEGORÍAS */}
