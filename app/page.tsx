@@ -625,7 +625,8 @@ export default function VitoPizzaApp() {
                 type="text" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={t.searchPlaceholder || "Buscar..."} 
+                // FIX: Cast t as any to avoid TS error if key is missing in dictionary.ts
+                placeholder={(t as any).searchPlaceholder || "Buscar..."} 
                 className={`w-full pl-10 p-3 rounded-2xl border outline-none text-sm ${base.inputContainer} ${base.text}`}
                 style={isDarkMode ? { backgroundColor: '#000000', color: '#ffffff', borderColor: '#333333' } : {}} 
             />
