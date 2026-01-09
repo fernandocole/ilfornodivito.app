@@ -12,10 +12,14 @@ export const TopBar = ({
     THEMES, changeTheme, isInstallable, handleInstallClick, onLogout, userAvatar, onAvatarClick 
 }: any) => {
 
+    // Clase común para botones dentro de la píldora (sin bordes, fondo transparente)
+    const innerBtnClass = "p-2 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
+    const innerBtnSmallClass = "p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
+
     return (
         <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
             
-            {/* LADO IZQUIERDO: LOGO Y USUARIOS */}
+            {/* LADO IZQUIERDO: LOGO Y USUARIOS (Ya es una píldora) */}
             <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={onAvatarClick}>
                 {userAvatar ? (
                     <img src={userAvatar} className="w-8 h-8 rounded-full object-cover border border-white/20" alt="Avatar" />
@@ -35,11 +39,11 @@ export const TopBar = ({
             {/* LADO DERECHO: HERRAMIENTAS */}
             <div className="flex flex-col items-end gap-2 pointer-events-auto">
                 
-                {/* FILA 1: HERRAMIENTAS PRINCIPALES (gap-1) */}
-                <div className="flex gap-1 relative">
+                {/* FILA 1: PÍLDORA DE CONFIGURACIÓN */}
+                <div className={`flex items-center gap-1 p-1 rounded-full shadow-lg backdrop-blur-md border ${base.bar}`}>
                     {/* TEMA */}
                     <div className="relative">
-                        <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`${innerBtnClass} ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                             <Palette size={20} />
                         </button>
                         {showThemeSelector && (
@@ -52,52 +56,50 @@ export const TopBar = ({
                     </div>
 
                     {/* MODO OSCURO */}
-                    <button onClick={toggleDarkMode} className={`p-2 rounded-full border shadow-lg ${base.bar}`}>
+                    <button onClick={toggleDarkMode} className={innerBtnClass}>
                         {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
                     </button>
 
                     {/* NOTIFICACIONES */}
-                    <button onClick={toggleNotificaciones} className={`p-2 rounded-full border shadow-lg ${base.bar} ${notifEnabled ? '' : 'opacity-50'}`}>
+                    <button onClick={toggleNotificaciones} className={`${innerBtnClass} ${notifEnabled ? '' : 'opacity-50'}`}>
                         {notifEnabled ? <Bell size={20} /> : <BellOff size={20} />}
                     </button>
                     
                     {/* IDIOMA */}
-                    <button onClick={rotarIdioma} className={`p-2 rounded-full border shadow-lg font-bold text-[10px] w-9 h-9 flex items-center justify-center ${base.bar}`}>
+                    <button onClick={rotarIdioma} className={`${innerBtnClass} font-bold text-[10px] w-9 h-9`}>
                         {lang.toUpperCase()}
                     </button>
 
                      {/* INSTALL PWA */}
                      {isInstallable && (
-                        <button onClick={handleInstallClick} className={`p-2 rounded-full border shadow-lg text-blue-500 ${base.bar} animate-bounce`}>
+                        <button onClick={handleInstallClick} className={`${innerBtnClass} text-blue-500 animate-bounce`}>
                             <Download size={20} />
                         </button>
                     )}
                 </div>
 
-                {/* FILA 2: FILTROS EXTRA Y NAVEGACIÓN (gap-1) */}
-                <div className="flex gap-1">
+                {/* FILA 2: PÍLDORA DE VISTA Y NAVEGACIÓN */}
+                <div className={`flex items-center gap-1 p-1 rounded-full shadow-lg backdrop-blur-md border ${base.bar}`}>
                     {/* HERRAMIENTAS DE ORDEN/VISTA */}
-                    <div className="flex gap-1 mr-1">
-                        <button onClick={cycleTextSize} className={`p-1.5 rounded-full border shadow-lg ${base.bar}`}>
-                            <Type size={16}/>
-                        </button>
-                        <button onClick={toggleCompact} className={`p-1.5 rounded-full border shadow-lg ${base.bar}`}>
-                            {isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}
-                        </button>
-                        <button onClick={toggleOrden} className={`p-1.5 rounded-full border shadow-lg ${base.bar}`}>
-                            {orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}
-                        </button>
-                    </div>
+                    <button onClick={cycleTextSize} className={innerBtnSmallClass}>
+                        <Type size={16}/>
+                    </button>
+                    <button onClick={toggleCompact} className={innerBtnSmallClass}>
+                        {isCompact ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}
+                    </button>
+                    <button onClick={toggleOrden} className={innerBtnSmallClass}>
+                        {orden === 'estado' ? <ArrowUpNarrowWide size={16}/> : <ArrowDownAZ size={16}/>}
+                    </button>
 
-                    {/* --- BOTONES DE NAVEGACIÓN --- */}
-                    
-                    {/* 1. CAMBIO A ADMIN */}
-                    <Link href="/admin" className={`p-1.5 rounded-full border shadow-lg flex items-center justify-center ${base.bar} text-blue-500`}>
+                    {/* SEPARADOR VISUAL */}
+                    <div className="w-px h-4 bg-current opacity-20 mx-0.5"></div>
+
+                    {/* NAVEGACIÓN */}
+                    <Link href="/admin" className={`${innerBtnSmallClass} text-blue-500`}>
                         <Shield size={18}/>
                     </Link>
 
-                    {/* 2. CERRAR SESIÓN */}
-                    <button onClick={onLogout} className={`p-1.5 rounded-full border shadow-lg flex items-center justify-center ${base.bar} text-red-500`}>
+                    <button onClick={onLogout} className={`${innerBtnSmallClass} text-red-500`}>
                         <LogOut size={18}/>
                     </button>
                 </div>
