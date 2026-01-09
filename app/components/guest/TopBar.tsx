@@ -17,8 +17,8 @@ export const TopBar = ({
     const innerBtnSmallClass = "p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
 
     return (
-        // CAMBIO AQUÍ: top-4 -> top-2 para subirlos más
-        <div className={`fixed top-2 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
+        // CAMBIO: top-2 -> top-1 (Más arriba)
+        <div className={`fixed top-1 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
             
             {/* LADO IZQUIERDO: LOGO Y USUARIOS (Píldora) */}
             <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={onAvatarClick}>
@@ -38,7 +38,8 @@ export const TopBar = ({
             </div>
 
             {/* LADO DERECHO: HERRAMIENTAS */}
-            <div className="flex flex-col items-end gap-2 pointer-events-auto">
+            {/* CAMBIO: gap-2 -> gap-1 (Píldoras más juntas verticalmente) */}
+            <div className="flex flex-col items-end gap-1 pointer-events-auto">
                 
                 {/* FILA 1: PÍLDORA DE CONFIGURACIÓN */}
                 <div className={`flex items-center gap-1 p-1 rounded-full shadow-lg backdrop-blur-md border ${base.bar}`}>
