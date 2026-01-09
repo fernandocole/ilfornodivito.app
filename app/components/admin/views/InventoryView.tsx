@@ -11,9 +11,12 @@ export const InventoryView = ({
     
     const [showShareModal, setShowShareModal] = useState(false);
 
-    // Detección robusta de modo oscuro para estilos en línea
-    const isDark = base.bg.includes('neutral-950') || base.bg.includes('bg-gray-900') || document.documentElement.classList.contains('dark');
+    // Detección estricta de modo oscuro para forzar estilos
+    const isDark = base.bg.includes('neutral-950') || base.bg.includes('bg-gray-900') || base.bg.includes('text-white');
     
+    // Estilo forzado para inputs en modo oscuro para evitar problemas en Windows/Android
+    const inputStyle = isDark ? { backgroundColor: '#000000', color: '#ffffff', borderColor: '#333333' } : {};
+
     const incrementBtnClass = isDark 
         ? "text-neutral-500 hover:bg-neutral-800 hover:text-white" 
         : "text-gray-400 hover:bg-gray-200 hover:text-black";
@@ -64,9 +67,6 @@ export const InventoryView = ({
         }
     };
 
-    // Estilo forzado para inputs en modo oscuro (Windows fix)
-    const inputStyle = isDark ? { backgroundColor: '#000000', color: 'white', borderColor: '#333' } : {};
-
     return (
         <div className="space-y-6 relative">
             
@@ -107,8 +107,8 @@ export const InventoryView = ({
                         value={newIngName} 
                         onChange={e => setNewIngName(e.target.value)} 
                         placeholder="Nombre..." 
-                        className={`flex-[2] p-3 rounded-xl outline-none border min-w-[120px] ${base.input}`}
-                        style={inputStyle} 
+                        className={`flex-[2] p-3 rounded-xl outline-none border min-w-[120px] ${base.input}`} 
+                        style={inputStyle}
                     />
                     <input 
                         type="text" 
@@ -116,8 +116,8 @@ export const InventoryView = ({
                         onChange={e => setNewIngCat(e.target.value)} 
                         placeholder="Categoría" 
                         list="cat-list" 
-                        className={`flex-1 p-3 rounded-xl outline-none border min-w-[100px] ${base.input}`}
-                        style={inputStyle} 
+                        className={`flex-1 p-3 rounded-xl outline-none border min-w-[100px] ${base.input}`} 
+                        style={inputStyle}
                     />
                     <datalist id="cat-list">{uniqueCategories.map(c => <option key={c} value={c} />)}</datalist>
                     <input 
@@ -129,7 +129,6 @@ export const InventoryView = ({
                         style={inputStyle}
                     />
                     
-                    {/* SELECTOR UNIDAD NUEVO: FONDO NEGRO EXPLICITO */}
                     <select 
                         value={newIngUnit} 
                         onChange={e => setNewIngUnit(e.target.value)} 
@@ -161,13 +160,33 @@ export const InventoryView = ({
                                             Actual: {ing.cantidad_disponible} {ing.unidad}
                                         </span>
                                     </div>
-                                    <input type="text" value={editIngForm.nombre} onChange={e => setEditIngForm({...editIngForm, nombre: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} placeholder="Nombre" style={inputStyle} />
-                                    <input type="text" value={editIngForm.categoria} onChange={e => setEditIngForm({...editIngForm, categoria: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} placeholder="Categoría" list="cat-list" style={inputStyle} />
+                                    <input 
+                                        type="text" 
+                                        value={editIngForm.nombre} 
+                                        onChange={e => setEditIngForm({...editIngForm, nombre: e.target.value})} 
+                                        className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} 
+                                        placeholder="Nombre" 
+                                        style={inputStyle}
+                                    />
+                                    <input 
+                                        type="text" 
+                                        value={editIngForm.categoria} 
+                                        onChange={e => setEditIngForm({...editIngForm, categoria: e.target.value})} 
+                                        className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} 
+                                        placeholder="Categoría" 
+                                        list="cat-list" 
+                                        style={inputStyle}
+                                    />
                                     
                                     <div className="flex gap-2">
-                                        <input type="number" value={editIngForm.cantidad} onChange={e => setEditIngForm({...editIngForm, cantidad: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} style={inputStyle} />
+                                        <input 
+                                            type="number" 
+                                            value={editIngForm.cantidad} 
+                                            onChange={e => setEditIngForm({...editIngForm, cantidad: e.target.value})} 
+                                            className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} 
+                                            style={inputStyle}
+                                        />
                                         
-                                        {/* SELECTOR UNIDAD EDICIÓN: FONDO NEGRO EXPLICITO */}
                                         <select 
                                             value={editIngForm.unidad} 
                                             onChange={e => setEditIngForm({...editIngForm, unidad: e.target.value})} 
