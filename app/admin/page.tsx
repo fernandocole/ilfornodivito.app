@@ -48,9 +48,11 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// CORRECCION TEMA CARBONE: Textos contrastados
+// CORRECCION TEMA CARBONE (GRIS): 
+// - Color base: gray-800
+// - Texto: Negro en claro, Blanco en oscuro (para barra inferior)
 const THEMES = [
-  { name: 'Carbone', color: 'bg-neutral-900', gradient: 'from-neutral-800 to-black', text: 'text-black dark:text-white' },
+  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-900 dark:text-white' },
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
   { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
@@ -151,6 +153,21 @@ export default function AdminPage() {
     }
   }, []);
 
+  // CORRECCIÓN: PERSISTENCIA DE TEMA Y MODO OSCURO AL CARGAR
+  useEffect(() => {
+      const savedTheme = localStorage.getItem('vito-admin-theme');
+      const savedDark = localStorage.getItem('vito-admin-dark');
+      
+      if (savedTheme) {
+          const found = THEMES.find(t => t.name === savedTheme);
+          if (found) setCurrentTheme(found);
+      }
+      
+      if (savedDark !== null) {
+          setIsDarkMode(savedDark === 'true');
+      }
+  }, []);
+
   // REALTIME
   useEffect(() => {
       if (autenticado) {
@@ -239,10 +256,21 @@ export default function AdminPage() {
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
   // --- HELPER FUNCTIONS ---
-  const toggleDarkMode = () => { setIsDarkMode(!isDarkMode); localStorage.setItem('vito-dark-mode', String(!isDarkMode)); };
+  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE
+  const toggleDarkMode = () => { 
+      const newMode = !isDarkMode;
+      setIsDarkMode(newMode); 
+      localStorage.setItem('vito-admin-dark', String(newMode)); 
+  };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
-  const selectTheme = (t:any) => { setCurrentTheme(t); setShowThemeSelector(false); window.dispatchEvent(new Event('storage')); };
+  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE
+  const selectTheme = (t:any) => { 
+      setCurrentTheme(t); 
+      localStorage.setItem('vito-admin-theme', t.name);
+      setShowThemeSelector(false); 
+  };
+  
   const updateLogName = async (id:string, n:string) => { await supabase.from('access_logs').update({invitado_nombre: n}).eq('id', id); refreshLogsOnly(); };
   const handleImageUpload = async (event: any, pizzaId: string | null = null) => { 
       const file = event.target.files?.[0]; if (!file) return; setUploading(true); 
@@ -343,14 +371,7 @@ export default function AdminPage() {
   const changePass = async() => { await supabase.from('configuracion_dia').update({password_admin:newPass}).eq('id',config.id); };
   const toggleCategory = async(c:string) => { const s = new Set(activeCategories); if(s.has(c))s.delete(c); else s.add(c); setConfig({...config, categoria_activa: JSON.stringify(Array.from(s))}); supabase.from('configuracion_dia').update({categoria_activa: JSON.stringify(Array.from(s))}).eq('id',config.id); };
   const addU = async() => { await supabase.from('lista_invitados').insert([{nombre:newGuestName}]); cargarDatos(); };
-  
-  // OPTIMIZACIÓN: Bloqueo de usuarios con recarga de datos inmediata
-  const toggleB = async(u:any) => { 
-      await supabase.from('lista_invitados').update({bloqueado:!u.bloqueado}).eq('id',u.id); 
-      // Forzar broadcast para que la app de invitados reaccione (si está suscrita a cambios)
-      cargarDatos(); 
-  };
-
+  const toggleB = async(u:any) => { await supabase.from('lista_invitados').update({bloqueado:!u.bloqueado}).eq('id',u.id); cargarDatos(); };
   const guardarMotivo = async(n:string, u:any) => { await supabase.from('lista_invitados').update({motivo_bloqueo:tempMotivos[n]}).eq('id',u.id); };
   const resetU = async(n:string) => { if(confirm("Borrar?")) await supabase.from('pedidos').delete().eq('invitado_nombre',n); cargarDatos(); };
   const eliminarUsuario = async(n:string, u:any) => { if(confirm("Eliminar?")) { await supabase.from('pedidos').delete().eq('invitado_nombre',n); await supabase.from('lista_invitados').delete().eq('id',u.id); cargarDatos(); } };
@@ -371,7 +392,7 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-        {/* FONDO GRADIENTE (Z-INDEX 0) */}
+        {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO: SE AGREGÓ Z-0 EXPLICITO */}
         <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-0 z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
        {/* HEADER (Z-INDEX 50) */}
@@ -453,7 +474,7 @@ export default function AdminPage() {
            {view === 'ranking' && <RankingView base={base} delAllVal={delAllVal} ranking={ranking} delValPizza={delValPizza} />}
        </div>
 
-       {/* MODAL ONLINE USERS */}
+       {/* MODAL ONLINE USERS (Sin input de invitados) */}
        {showOnlineModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowOnlineModal(false)}>
             <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${base.card} relative`} onClick={e => e.stopPropagation()}>
@@ -520,6 +541,7 @@ export default function AdminPage() {
                     <button onClick={() => setBulkMode('REMOVE')} className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 ${bulkMode === 'REMOVE' ? 'bg-red-600 text-white' : 'opacity-60'}`}><Trash2 size={16}/> Eliminar</button>
                 </div>
                 <div className="space-y-4 mb-4 overflow-y-auto flex-1 pr-2">
+                    {/* SELECTOR DE ACCIÓN */}
                     <div>
                          <label className="text-xs font-bold uppercase opacity-60 mb-2 block">Acción a realizar</label>
                          <div className="grid grid-cols-2 gap-2">
@@ -531,6 +553,7 @@ export default function AdminPage() {
                          </div>
                     </div>
 
+                    {/* CONFIGURACIÓN SEGÚN ACCIÓN */}
                     <div className={`p-3 rounded-xl border ${base.innerCard}`}>
                         {(bulkAction === 'RECIPE_ADD' || bulkAction === 'RECIPE_REMOVE' || bulkAction === 'EXTRA_ADD') && (
                             <div className="space-y-2">
@@ -541,24 +564,28 @@ export default function AdminPage() {
                                 </select>
                             </div>
                         )}
+                        
                         {(bulkAction === 'RECIPE_ADD' || bulkAction === 'EXTRA_ADD') && (
                             <div className="space-y-2 mt-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Cantidad a descontar</label>
                                 <input type="number" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} placeholder="Ej: 50" className={`w-full p-2.5 rounded-lg border outline-none text-sm ${base.input}`}/>
                             </div>
                         )}
+
                         {bulkAction === 'EXTRA_ADD' && (
                              <div className="space-y-2 mt-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Nombre Visible (Menú)</label>
                                 <input type="text" value={bulkExtraName} onChange={(e) => setBulkExtraName(e.target.value)} placeholder="Ej: Extra Cheddar" className={`w-full p-2.5 rounded-lg border outline-none text-sm ${base.input}`}/>
                             </div>
                         )}
+
                         {bulkAction === 'TIME_SET' && (
                              <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Tiempo total (segundos)</label>
                                 <input type="number" value={bulkQty} onChange={(e) => setBulkQty(e.target.value)} placeholder="Ej: 900 (15 min)" className={`w-full p-2.5 rounded-lg border outline-none text-sm ${base.input}`}/>
                             </div>
                         )}
+
                         {bulkAction === 'DESC_SET' && (
                              <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Nueva Descripción</label>
@@ -567,6 +594,7 @@ export default function AdminPage() {
                         )}
                     </div>
 
+                    {/* SELECCIÓN DE ITEMS */}
                     <div>
                         <div className="flex justify-between items-end mb-2 border-b border-gray-700 pb-2">
                             <label className="text-xs font-bold uppercase opacity-60">Seleccionar Items ({bulkSelectedPizzas.length})</label>
@@ -575,6 +603,8 @@ export default function AdminPage() {
                                 <button onClick={() => setBulkSelectedPizzas([])} className="text-[10px] underline opacity-50 hover:opacity-100">Ninguna</button>
                             </div>
                         </div>
+                        
+                        {/* FILTRO POR CATEGORÍA RÁPIDA */}
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-2 no-scrollbar">
                             {uniqueCategories.map(cat => (
                                 <button key={cat} onClick={() => {
@@ -587,6 +617,7 @@ export default function AdminPage() {
                                 </button>
                             ))}
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                             {pizzas.map(p => (
                                 <div key={p.id} onClick={() => toggleBulkPizza(p.id)} className={`p-2 rounded-lg border cursor-pointer flex items-center gap-3 transition-all ${bulkSelectedPizzas.includes(p.id) ? 'bg-blue-500/20 border-blue-500' : base.innerCard}`}>
@@ -602,6 +633,7 @@ export default function AdminPage() {
                         </div>
                     </div>
                 </div>
+                
                 <button onClick={executeBulkAction} className={`w-full py-4 font-bold rounded-xl text-white shadow-lg ${bulkAction === 'RECIPE_REMOVE' ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
                     APLICAR CAMBIOS ({bulkSelectedPizzas.length})
                 </button>

@@ -119,6 +119,7 @@ export const KitchenView = ({
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
+                                            {/* Titulo neutro usando base.text */}
                                             <h3 className={`font-black text-xl leading-none ${base.text}`}>{p.nombre}</h3>
                                             {p.cocinando && (
                                                 <div className="flex items-center gap-2 mt-1">
