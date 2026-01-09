@@ -17,9 +17,10 @@ export const TopBar = ({
     const innerBtnSmallClass = "p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center";
 
     return (
-        <div className={`fixed top-4 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
+        // CAMBIO AQUÍ: top-4 -> top-2 para subirlos más
+        <div className={`fixed top-2 left-4 right-4 z-50 flex justify-between items-start pointer-events-none`}>
             
-            {/* LADO IZQUIERDO: LOGO Y USUARIOS (Ya es una píldora) */}
+            {/* LADO IZQUIERDO: LOGO Y USUARIOS (Píldora) */}
             <div className={`p-2 rounded-full shadow-lg backdrop-blur-md border flex items-center gap-3 pointer-events-auto cursor-pointer ${base.bar}`} onClick={onAvatarClick}>
                 {userAvatar ? (
                     <img src={userAvatar} className="w-8 h-8 rounded-full object-cover border border-white/20" alt="Avatar" />
