@@ -11,7 +11,9 @@ export const InventoryView = ({
     
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const isDark = base.bg.includes('neutral-950') || base.bg.includes('bg-gray-900');
+    // Detectamos si es modo oscuro basándonos en las clases base pasadas
+    const isDark = base.bg.includes('neutral-950') || base.bg.includes('bg-gray-900') || base.bg.includes('text-white');
+    
     const incrementBtnClass = isDark 
         ? "text-neutral-500 hover:bg-neutral-800 hover:text-white" 
         : "text-gray-400 hover:bg-gray-200 hover:text-black";
@@ -121,11 +123,15 @@ export const InventoryView = ({
                         className={`w-16 p-3 rounded-xl outline-none border text-center ${base.input}`} 
                     />
                     
-                    {/* SELECTOR UNIDAD NUEVO: FONDO NEGRO EXPLICITO EN DARK MODE */}
+                    {/* SELECTOR UNIDAD: FORZAMOS EL ESTILO EN LINEA PARA QUE WINDOWS NO LO PONGA BLANCO */}
                     <select 
                         value={newIngUnit} 
                         onChange={e => setNewIngUnit(e.target.value)} 
-                        className={`w-20 p-3 rounded-xl outline-none border ${base.input} bg-white dark:bg-black text-black dark:text-white`}
+                        className={`w-20 p-3 rounded-xl outline-none border ${base.input}`}
+                        style={{ 
+                            backgroundColor: isDark ? '#171717' : '#ffffff', 
+                            color: isDark ? '#ffffff' : '#000000' 
+                        }}
                     >
                         <option value="g">g</option><option value="kg">kg</option><option value="u">u</option><option value="ml">ml</option><option value="L">L</option>
                     </select>
@@ -158,11 +164,15 @@ export const InventoryView = ({
                                     <div className="flex gap-2">
                                         <input type="number" value={editIngForm.cantidad} onChange={e => setEditIngForm({...editIngForm, cantidad: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} />
                                         
-                                        {/* SELECTOR UNIDAD EDICIÓN: FONDO NEGRO EXPLICITO */}
+                                        {/* SELECTOR UNIDAD (EDICION): FORZAMOS ESTILO */}
                                         <select 
                                             value={editIngForm.unidad} 
                                             onChange={e => setEditIngForm({...editIngForm, unidad: e.target.value})} 
-                                            className={`p-2.5 rounded-lg border text-sm ${base.input} bg-white dark:bg-black text-black dark:text-white`}
+                                            className={`p-2.5 rounded-lg border text-sm ${base.input}`}
+                                            style={{ 
+                                                backgroundColor: isDark ? '#171717' : '#ffffff', 
+                                                color: isDark ? '#ffffff' : '#000000' 
+                                            }}
                                         >
                                             <option value="g">g</option><option value="kg">kg</option><option value="u">u</option>
                                         </select>

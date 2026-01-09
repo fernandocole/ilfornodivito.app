@@ -48,11 +48,9 @@ const calcularStockDinamico = (receta: any[], inventario: any[]) => {
     return min === Infinity ? 0 : min;
 };
 
-// CORRECCION TEMA CARBONE (GRIS): 
-// - Color base: gray-800
-// - Texto: Negro en claro, Blanco en oscuro (para barra inferior)
+// TEMAS BRILLANTES Y AJUSTE TEMA GRIS
 const THEMES = [
-  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-400 dark:text-white' },
+  { name: 'Carbone', color: 'bg-gray-800', gradient: 'from-gray-700 to-black', text: 'text-gray-900 dark:text-white' }, // Texto visible en ambos modos
   { name: 'Turquesa', color: 'bg-cyan-500', gradient: 'from-cyan-400 to-teal-600', text: 'text-cyan-500' },
   { name: 'Pistacho', color: 'bg-lime-500', gradient: 'from-lime-400 to-green-600', text: 'text-lime-500' },
   { name: 'Fuego', color: 'bg-red-600', gradient: 'from-red-500 to-orange-600', text: 'text-red-500' },
@@ -153,7 +151,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // CORRECCIÓN: PERSISTENCIA DE TEMA Y MODO OSCURO AL CARGAR
+  // CRÍTICO: CARGAR PREFERENCIAS Y APLICAR CLASE DARK AL HTML
   useEffect(() => {
       const savedTheme = localStorage.getItem('vito-admin-theme');
       const savedDark = localStorage.getItem('vito-admin-dark');
@@ -163,8 +161,16 @@ export default function AdminPage() {
           if (found) setCurrentTheme(found);
       }
       
+      // Aplicar Dark Mode al inicio
       if (savedDark !== null) {
-          setIsDarkMode(savedDark === 'true');
+          const isDark = savedDark === 'true';
+          setIsDarkMode(isDark);
+          if (isDark) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+      } else {
+          // Default a Dark
+          setIsDarkMode(true);
+          document.documentElement.classList.add('dark');
       }
   }, []);
 
@@ -256,11 +262,13 @@ export default function AdminPage() {
   const allUsersList = useMemo(() => { const orderCounts: Record<string, number> = {}; pedidos.forEach(p => { const k = p.invitado_nombre.toLowerCase(); orderCounts[k] = (orderCounts[k] || 0) + p.cantidad_porciones; }); const map = new Map(); invitadosDB.forEach(u => { const k = u.nombre.toLowerCase(); const isWebOrigin = u.origen === 'web'; map.set(k, { ...u, totalOrders: orderCounts[k] || 0, source: isWebOrigin ? 'ped' : 'db', origen: u.origen || 'admin' }); }); Object.keys(orderCounts).forEach(key => { if (!map.has(key)) { const realName = pedidos.find(p => p.invitado_nombre.toLowerCase() === key)?.invitado_nombre || key; map.set(key, { id: null, nombre: realName, bloqueado: false, source: 'ped', totalOrders: orderCounts[key], origen: 'web' }); } }); return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)); }, [invitadosDB, pedidos]);
 
   // --- HELPER FUNCTIONS ---
-  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE
+  // CORRECCIÓN: GUARDAR EN LOCALSTORAGE Y APLICAR CLASE DARK
   const toggleDarkMode = () => { 
       const newMode = !isDarkMode;
       setIsDarkMode(newMode); 
-      localStorage.setItem('vito-admin-dark', String(newMode)); 
+      localStorage.setItem('vito-admin-dark', String(newMode));
+      if (newMode) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
   };
   const toggleOrden = () => setOrden(o => o==='estado'?'nombre':'estado');
   const toggleCompact = () => setIsCompact(!isCompact);
@@ -371,7 +379,13 @@ export default function AdminPage() {
   const changePass = async() => { await supabase.from('configuracion_dia').update({password_admin:newPass}).eq('id',config.id); };
   const toggleCategory = async(c:string) => { const s = new Set(activeCategories); if(s.has(c))s.delete(c); else s.add(c); setConfig({...config, categoria_activa: JSON.stringify(Array.from(s))}); supabase.from('configuracion_dia').update({categoria_activa: JSON.stringify(Array.from(s))}).eq('id',config.id); };
   const addU = async() => { await supabase.from('lista_invitados').insert([{nombre:newGuestName}]); cargarDatos(); };
-  const toggleB = async(u:any) => { await supabase.from('lista_invitados').update({bloqueado:!u.bloqueado}).eq('id',u.id); cargarDatos(); };
+  
+  // BLOQUEO INSTANTANEO: ACTUALIZA DB Y RECARGA
+  const toggleB = async(u:any) => { 
+      await supabase.from('lista_invitados').update({bloqueado:!u.bloqueado}).eq('id',u.id); 
+      cargarDatos(); 
+  };
+
   const guardarMotivo = async(n:string, u:any) => { await supabase.from('lista_invitados').update({motivo_bloqueo:tempMotivos[n]}).eq('id',u.id); };
   const resetU = async(n:string) => { if(confirm("Borrar?")) await supabase.from('pedidos').delete().eq('invitado_nombre',n); cargarDatos(); };
   const eliminarUsuario = async(n:string, u:any) => { if(confirm("Eliminar?")) { await supabase.from('pedidos').delete().eq('invitado_nombre',n); await supabase.from('lista_invitados').delete().eq('id',u.id); cargarDatos(); } };
@@ -392,7 +406,7 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen font-sans pb-28 w-full ${base.bg}`}>
-        {/* FONDO GRADIENTE (Z-INDEX 0) - CORREGIDO: SE AGREGÓ Z-0 EXPLICITO */}
+        {/* FONDO GRADIENTE (Z-INDEX 0) */}
         <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${currentTheme.gradient} opacity-0 z-0 rounded-b-[3rem] pointer-events-none`}></div>
 
        {/* HEADER (Z-INDEX 50) */}
@@ -410,7 +424,6 @@ export default function AdminPage() {
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
               <div className="flex gap-2">
                   <div className="relative">
-                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white */}
                       <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} text-gray-800 dark:text-white`}>
                           <Palette size={20} />
                       </button>
@@ -492,7 +505,7 @@ export default function AdminPage() {
         </div>
        )}
        
-       {/* MODAL DE LIMPIEZA - CORRECCIÓN WINDOWS: SELECT BACKGROUND */}
+       {/* MODAL DE LIMPIEZA */}
        {showCleanModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowCleanModal(false)}>
             <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col`} onClick={e => e.stopPropagation()}>
@@ -528,7 +541,7 @@ export default function AdminPage() {
         </div>
        )}
 
-       {/* MODAL BULK EDIT - CORRECCIÓN WINDOWS: SELECT BACKGROUND */}
+       {/* MODAL BULK EDIT */}
        {showBulkModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowBulkModal(false)}>
             <div className={`w-full max-w-lg rounded-3xl p-6 shadow-2xl border ${base.card} flex flex-col max-h-[90vh]`} onClick={e => e.stopPropagation()}>
