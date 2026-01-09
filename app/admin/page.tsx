@@ -382,7 +382,8 @@ export default function AdminPage() {
           <div className="flex flex-col items-end gap-2 pointer-events-auto">
               <div className="flex gap-2">
                   <div className="relative">
-                      <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} ${currentTheme.text}`}>
+                      {/* CORRECCIÓN ANDROID: text-gray-800 dark:text-white en lugar de currentTheme.text */}
+                      <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border shadow-lg ${base.bar} text-gray-800 dark:text-white`}>
                           <Palette size={20} />
                       </button>
                       {showThemeSelector && (

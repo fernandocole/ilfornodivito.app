@@ -100,9 +100,16 @@ export const InventoryView = ({
                     <input type="text" value={newIngCat} onChange={e => setNewIngCat(e.target.value)} placeholder="Categoría" list="cat-list" className={`flex-1 p-3 rounded-xl outline-none border min-w-[100px] ${base.input}`} />
                     <datalist id="cat-list">{uniqueCategories.map(c => <option key={c} value={c} />)}</datalist>
                     <input type="number" value={newIngQty} onChange={e => setNewIngQty(e.target.value)} placeholder="0" className={`w-16 p-3 rounded-xl outline-none border text-center ${base.input}`} />
-                    <select value={newIngUnit} onChange={e => setNewIngUnit(e.target.value)} className={`w-20 p-3 rounded-xl outline-none border bg-transparent ${base.input}`}>
+                    
+                    {/* CORRECCION WINDOWS: Fondo explicito */}
+                    <select 
+                        value={newIngUnit} 
+                        onChange={e => setNewIngUnit(e.target.value)} 
+                        className={`w-20 p-3 rounded-xl outline-none border ${base.input} bg-white dark:bg-neutral-900 text-black dark:text-white`}
+                    >
                         <option value="g">g</option><option value="kg">kg</option><option value="u">u</option><option value="ml">ml</option><option value="L">L</option>
                     </select>
+                    
                     <button onClick={addIng} className={`w-12 rounded-xl font-bold flex items-center justify-center ${currentTheme.color} text-white shadow-lg active:scale-95`}>
                         <Plus size={24}/>
                     </button>
@@ -125,12 +132,18 @@ export const InventoryView = ({
                                             Actual: {ing.cantidad_disponible} {ing.unidad}
                                         </span>
                                     </div>
-                                    <input type="text" value={editIngForm.nombre} onChange={e => setEditIngForm({...editIngForm, nombre: e.target.value})} className={`w-full p-2 rounded-lg border text-sm ${base.input}`} placeholder="Nombre" />
-                                    <input type="text" value={editIngForm.categoria} onChange={e => setEditIngForm({...editIngForm, categoria: e.target.value})} className={`w-full p-2 rounded-lg border text-sm ${base.input}`} placeholder="Categoría" list="cat-list" />
+                                    <input type="text" value={editIngForm.nombre} onChange={e => setEditIngForm({...editIngForm, nombre: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} placeholder="Nombre" />
+                                    <input type="text" value={editIngForm.categoria} onChange={e => setEditIngForm({...editIngForm, categoria: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} placeholder="Categoría" list="cat-list" />
                                     
                                     <div className="flex gap-2">
-                                        <input type="number" value={editIngForm.cantidad} onChange={e => setEditIngForm({...editIngForm, cantidad: e.target.value})} className={`w-full p-2 rounded-lg border text-sm ${base.input}`} />
-                                        <select value={editIngForm.unidad} onChange={e => setEditIngForm({...editIngForm, unidad: e.target.value})} className={`p-2 rounded-lg border text-sm bg-transparent ${base.input}`}>
+                                        <input type="number" value={editIngForm.cantidad} onChange={e => setEditIngForm({...editIngForm, cantidad: e.target.value})} className={`w-full p-2.5 rounded-lg border text-sm ${base.input}`} />
+                                        
+                                        {/* CORRECCION WINDOWS */}
+                                        <select 
+                                            value={editIngForm.unidad} 
+                                            onChange={e => setEditIngForm({...editIngForm, unidad: e.target.value})} 
+                                            className={`p-2.5 rounded-lg border text-sm ${base.input} bg-white dark:bg-neutral-900 text-black dark:text-white`}
+                                        >
                                             <option value="g">g</option><option value="kg">kg</option><option value="u">u</option>
                                         </select>
                                     </div>

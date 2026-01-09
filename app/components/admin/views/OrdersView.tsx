@@ -45,7 +45,7 @@ export const OrdersView = ({
                         return (
                             <div key={usuario.nombre} className={`rounded-3xl border transition-all duration-300 overflow-hidden ${base.card} ${isExpanded ? 'shadow-md ring-1 ring-gray-200 dark:ring-gray-700' : 'shadow-sm'}`}>
                                 {/* CABECERA USUARIO */}
-                                <div onClick={() => toggleExpand(usuario.nombre)} className="p-4 flex items-center justify-between cursor-pointer">
+                                <div onClick={() => toggleExpand(usuario.nombre)} className="p-4 flex items-center justify-between cursor-pointer group">
                                     <div className="flex items-center gap-4">
                                         <div onClick={(e) => { e.stopPropagation(); if(avatarUrl) setImageToView(avatarUrl); }} className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-800 flex-shrink-0 bg-gray-200 dark:bg-gray-800">
                                             {avatarUrl ? (
@@ -64,9 +64,9 @@ export const OrdersView = ({
                                         </div>
                                     </div>
                                     
-                                    {/* CORRECCIÓN: Fondo negro sólido en modo oscuro, gris claro en claro */}
-                                    <div className={`p-2 rounded-full transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} bg-gray-100 text-gray-600 dark:bg-neutral-900 dark:text-white border dark:border-gray-700`}>
-                                        <ChevronDown size={16} />
+                                    {/* CORRECCIÓN: Botón transparente, sin borde, solo flecha visible */}
+                                    <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} opacity-50 group-hover:opacity-100`}>
+                                        <ChevronDown size={24} className="text-gray-500 dark:text-gray-400" />
                                     </div>
                                 </div>
 

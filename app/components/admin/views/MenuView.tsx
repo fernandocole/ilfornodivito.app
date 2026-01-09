@@ -67,7 +67,6 @@ export const MenuView = ({
         setExpandedPizza(null);
     };
 
-    // Esta función maneja la activación rápida (directo a BD)
     const handleQuickToggle = (e: any, id: string, currentState: boolean) => {
         e.stopPropagation();
         updateP(id, 'activa', !currentState);
@@ -89,7 +88,6 @@ export const MenuView = ({
                         <Edit3 /> Gestión del Menú
                     </h2>
                     <div className="flex gap-2">
-                        {/* BOTÓN NUEVO: EDICIÓN MASIVA */}
                         <button 
                             onClick={() => setShowBulkModal(true)} 
                             className={`p-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm border ${base.buttonSec}`}
@@ -226,7 +224,16 @@ export const MenuView = ({
                     </div>
                     <div className={`flex gap-2 items-center p-1 rounded-lg ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
                         <span className="px-2 opacity-50 font-bold">Ordenar:</span>
-                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value as any)} className={`bg-transparent outline-none font-bold cursor-pointer pr-2 ${isDarkMode ? 'text-white' : 'text-black'}`}><option value="alpha">A-Z</option><option value="type">Tipo</option><option value="date">Creado</option></select>
+                        {/* CORRECCION WINDOWS: Fondo explicito para que se vea el texto */}
+                        <select 
+                            value={sortOrder} 
+                            onChange={e => setSortOrder(e.target.value as any)} 
+                            className={`bg-transparent outline-none font-bold cursor-pointer pr-2 ${isDarkMode ? 'text-white' : 'text-black'} [&>option]:bg-white [&>option]:text-black dark:[&>option]:bg-neutral-900 dark:[&>option]:text-white`}
+                        >
+                            <option value="alpha">A-Z</option>
+                            <option value="type">Tipo</option>
+                            <option value="date">Creado</option>
+                        </select>
                     </div>
                 </div>
             </div>
