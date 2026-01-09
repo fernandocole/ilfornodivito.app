@@ -4,14 +4,14 @@ export const ConfigView = ({
     base, config, setConfig, isDarkMode, resetAllOrders, 
     newPass, setNewPass, confirmPass, setConfirmPass, changePass, 
     currentTheme, sessionDuration, setSessionDuration,
-    updateTotalGuests // <--- NUEVA PROP RECIBIDA
+    updateTotalGuests
 }: any) => {
 
     return (
         <div className="space-y-6 pb-10">
             <h2 className="text-2xl font-black opacity-80">Configuración</h2>
 
-            {/* 1. CAPACIDAD DEL EVENTO (NUEVO) */}
+            {/* 1. CAPACIDAD DEL EVENTO */}
             <div className={`p-5 rounded-3xl border shadow-sm ${base.card}`}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Users className="text-blue-500" /> Capacidad del Evento
@@ -47,18 +47,12 @@ export const ConfigView = ({
                         onChange={(e) => {
                             const val = e.target.value;
                             setConfig({...config, mensaje_bienvenida: val});
-                            // Ojo: Esto actualiza local, idealmente debería haber un botón guardar o auto-save, 
-                            // pero para mantener consistencia con el resto usaremos el prop setConfig 
-                            // y asumiremos que el padre maneja el guardado o se agrega un botón aquí.
-                            // Para este caso rápido, agregaremos un botón de guardar específico para esto abajo.
                         }}
                         className={`w-full p-4 rounded-xl border outline-none h-32 text-sm ${base.input}`} 
                         placeholder="Ej: Hola [nombre], bienvenido a mi cumple..."
                     />
                     <button 
                         onClick={async () => {
-                            // Pequeño hack para guardar esto sin crear una función nueva en el padre
-                            // Idealmente updateConfig debería venir del padre.
                             const { createClient } = require('@supabase/supabase-js');
                             const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
                             await supabase.from('configuracion_dia').update({ mensaje_bienvenida: config.mensaje_bienvenida }).eq('id', config.id);
@@ -79,7 +73,15 @@ export const ConfigView = ({
                 <div className="space-y-3">
                     <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nueva contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
                     <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirmar contraseña" className={`w-full p-3 rounded-xl border outline-none ${base.input}`} />
-                    <button onClick={changePass} disabled={!newPass || newPass !== confirmPass} className={`w-full py-3 rounded-xl font-bold bg-orange-500 text-white disabled:opacity-50`}>Actualizar Contraseña</button>
+                    
+                    {/* BOTÓN ACTUALIZADO CON COLOR DEL TEMA */}
+                    <button 
+                        onClick={changePass} 
+                        disabled={!newPass || newPass !== confirmPass} 
+                        className={`w-full py-3 rounded-xl font-bold ${currentTheme.color} text-white disabled:opacity-50 transition-opacity`}
+                    >
+                        Actualizar Contraseña
+                    </button>
                 </div>
             </div>
 
